@@ -41,6 +41,7 @@ import com.helper.beamnetworks.data.AppContainer
 import com.helper.beamnetworks.data.api.ApiException
 import com.helper.beamnetworks.ui.components.FieldLabel
 import com.helper.beamnetworks.ui.components.FormField
+import com.helper.beamnetworks.ui.components.NetworkBackdrop
 import com.helper.beamnetworks.ui.components.PrimaryButton
 import com.helper.beamnetworks.ui.navigation.containerViewModel
 import com.helper.beamnetworks.ui.theme.BeamColors
@@ -83,71 +84,73 @@ fun LoginScreen() {
     val vm = containerViewModel { app, _ -> LoginViewModel(app) }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(BeamColors.Background)
-            .systemBarsPadding()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        // The artwork has a wide white margin, so it is scaled up inside its rounded frame to fill it.
-        Box(
-            Modifier
-                .padding(top = 24.dp, bottom = 8.dp)
-                .size(96.dp)
-                .clip(RoundedCornerShape(26.dp))
-                .align(Alignment.CenterHorizontally),
-        ) {
-            Image(
-                painterResource(R.drawable.beam_logo),
-                contentDescription = "Beam OPS",
-                modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = 1.45f, scaleY = 1.45f),
-            )
-        }
-        Text("Welcome back", style = BeamType.Greeting, textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.CenterHorizontally))
-        Text(
-            "Sign in with your Beam staff account",
-            style = BeamType.Small.copy(color = BeamColors.TextMuted),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 12.dp),
-        )
+    Box(Modifier.fillMaxSize().background(BeamColors.Background)) {
+        NetworkBackdrop(Modifier.fillMaxSize())
         Column(
-            Modifier.background(BeamColors.Surface, BeamShapes.CardLarge).padding(18.dp),
+            Modifier
+                .fillMaxSize()
+                .systemBarsPadding()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 32.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            FormField("Email", email, { email = it }, placeholder = "you@isp.co.ke", keyboardType = KeyboardType.Email)
-            FieldLabel("Password") {
-                BasicTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    singleLine = true,
-                    textStyle = BeamType.Body,
-                    cursorBrush = SolidColor(BeamColors.Primary),
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Go),
-                    keyboardActions = KeyboardActions(onGo = { vm.login(email, password) }),
-                    modifier = Modifier.fillMaxWidth(),
-                    decorationBox = { inner ->
-                        androidx.compose.foundation.layout.Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .background(BeamColors.InputFill, BeamShapes.Input)
-                                .padding(horizontal = 12.dp, vertical = 14.dp),
-                        ) { inner() }
-                    },
+            // The artwork has a wide white margin, so it is scaled up inside its rounded frame to fill it.
+            Box(
+                Modifier
+                    .padding(top = 24.dp, bottom = 8.dp)
+                    .size(96.dp)
+                    .clip(RoundedCornerShape(26.dp))
+                    .align(Alignment.CenterHorizontally),
+            ) {
+                Image(
+                    painterResource(R.drawable.beam_logo),
+                    contentDescription = "Beam OPS",
+                    modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = 1.45f, scaleY = 1.45f),
                 )
             }
-            vm.error?.let { Text(it, style = BeamType.Meta.copy(color = BeamColors.Danger)) }
-            PrimaryButton(if (vm.busy) "Signing in…" else "Sign in", { vm.login(email, password) }, enabled = !vm.busy)
+            Text("Welcome back", style = BeamType.Greeting, textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.CenterHorizontally))
+            Text(
+                "Sign in with your Beam staff account",
+                style = BeamType.Small.copy(color = BeamColors.TextMuted),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 12.dp),
+            )
+            Column(
+                Modifier.background(BeamColors.Surface, BeamShapes.CardLarge).padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                FormField("Email", email, { email = it }, placeholder = "you@isp.co.ke", keyboardType = KeyboardType.Email)
+                FieldLabel("Password") {
+                    BasicTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        singleLine = true,
+                        textStyle = BeamType.Body,
+                        cursorBrush = SolidColor(BeamColors.Primary),
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Go),
+                        keyboardActions = KeyboardActions(onGo = { vm.login(email, password) }),
+                        modifier = Modifier.fillMaxWidth(),
+                        decorationBox = { inner ->
+                            androidx.compose.foundation.layout.Box(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .background(BeamColors.InputFill, BeamShapes.Input)
+                                    .padding(horizontal = 12.dp, vertical = 14.dp),
+                            ) { inner() }
+                        },
+                    )
+                }
+                vm.error?.let { Text(it, style = BeamType.Meta.copy(color = BeamColors.Danger)) }
+                PrimaryButton(if (vm.busy) "Signing in…" else "Sign in", { vm.login(email, password) }, enabled = !vm.busy)
+            }
+            Text(
+                "Forgot your password? Reset it from the Beam web dashboard.",
+                style = BeamType.Meta,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp),
+            )
         }
-        Text(
-            "Forgot your password? Reset it from the Beam web dashboard.",
-            style = BeamType.Meta,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp),
-        )
     }
 }
