@@ -4,6 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -91,15 +93,20 @@ fun LoginScreen() {
             .padding(horizontal = 24.dp, vertical = 32.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Image(
-            painterResource(R.drawable.beam_logo),
-            contentDescription = "Beam OPS",
-            modifier = Modifier
+        // The artwork has a wide white margin, so it is scaled up inside its rounded frame to fill it.
+        Box(
+            Modifier
                 .padding(top = 24.dp, bottom = 8.dp)
-                .size(88.dp)
-                .clip(RoundedCornerShape(24.dp))
+                .size(96.dp)
+                .clip(RoundedCornerShape(26.dp))
                 .align(Alignment.CenterHorizontally),
-        )
+        ) {
+            Image(
+                painterResource(R.drawable.beam_logo),
+                contentDescription = "Beam OPS",
+                modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = 1.45f, scaleY = 1.45f),
+            )
+        }
         Text("Welcome back", style = BeamType.Greeting, textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.CenterHorizontally))
         Text(
             "Sign in with your Beam staff account",
