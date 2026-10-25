@@ -156,7 +156,7 @@ private fun BeamShell(app: AppContainer) {
         MenuSection(null, listOf(
             MenuItem(BeamIcons.LayoutGrid, Tones.Blue, "Dashboard", destination.isAny(HomeRoute::class)) { menuGo(HomeRoute, tab = true) },
             MenuItem(BeamIcons.Users, Tones.Green, "Customers (PPPoE)", destination.isAny(CustomersRoute::class)) { menuGo(CustomersRoute(), tab = true) },
-            MenuItem(BeamIcons.Wifi, Tones.Teal, "Hotspot & vouchers", destination.isAny(HotspotRoute::class)) { menuGo(HotspotRoute) },
+            MenuItem(BeamIcons.Wifi, Tones.Teal, "Hotspot", destination.isAny(HotspotRoute::class)) { menuGo(HotspotRoute) },
             MenuItem(BeamIcons.Wrench, Tones.Orange, "Jobs", destination.isAny(InstallsRoute::class)) { menuGo(InstallsRoute(), tab = true) },
             MenuItem(
                 BeamIcons.Ticket, Tones.Red, "Tickets", destination.isAny(TicketsRoute::class),
