@@ -106,7 +106,7 @@ fun LoginScreen() {
                 Image(
                     painterResource(R.drawable.beam_logo),
                     contentDescription = "Beam OPS",
-                    modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = 1.45f, scaleY = 1.45f),
+                    modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = 1.15f, scaleY = 1.15f),
                 )
             }
             Text("Welcome back", style = BeamType.Greeting, textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.CenterHorizontally))
