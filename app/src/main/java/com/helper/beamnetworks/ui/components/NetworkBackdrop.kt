@@ -3,39 +3,108 @@ package com.helper.beamnetworks.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
 
 /**
  * The network-of-nodes graphic from the Beam billing sign-in page (billing.beamnetworks.co.ke/login),
  * drawn from its own coordinates. The website stretches it to fit; here it is scaled evenly to cover the
- * screen and centred, so it never distorts and only the edges are cropped.
+ * screen and centred, so it never distorts. The dots drift and bounce off the edges of the screen, and the
+ * lines stay attached to them.
  */
 @Composable
 fun NetworkBackdrop(modifier: Modifier = Modifier) {
     val graph = remember { NetworkGraph.parse() }
-    Box(modifier.clipToBounds()) {
+    val speed = with(LocalDensity.current) { 16.dp.toPx() }
+    val field = remember { NodeField(graph.nodes.size) }
+    var frame by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(field, speed) {
+        var last = 0L
+        while (true) {
+            withFrameNanos { now ->
+                if (last != 0L) field.step(((now - last) / 1_000_000_000f).coerceAtMost(0.05f))
+                last = now
+                frame = now
+            }
+        }
+    }
+    Box(modifier.clipToBounds().onSizeChanged { field.fit(graph, it.width.toFloat(), it.height.toFloat(), speed) }) {
         Canvas(Modifier.matchParentSize().blur(3.dp)) {
+            frame // read so the canvas redraws every frame
             val scale = maxOf(size.width / GRAPH_W, size.height / GRAPH_H)
-            val dx = (size.width - GRAPH_W * scale) / 2f
-            val dy = (size.height - GRAPH_H * scale) / 2f
-            fun at(x: Float, y: Float) = Offset(dx + x * scale, dy + y * scale)
             for (l in graph.lines) {
                 drawLine(
                     color = (if (l.blue) Blue else Orange).copy(alpha = if (l.lit) 0.55f else 0.16f),
-                    start = at(l.x1, l.y1),
-                    end = at(l.x2, l.y2),
+                    start = Offset(field.x[l.a], field.y[l.a]),
+                    end = Offset(field.x[l.b], field.y[l.b]),
                     strokeWidth = scale,
                 )
             }
-            for (n in graph.nodes) {
-                drawCircle((if (n.blue) Blue else Orange).copy(alpha = if (n.lit) 1f else 0.5f), radius = 4f * scale, center = at(n.x, n.y))
+            for ((i, n) in graph.nodes.withIndex()) {
+                drawCircle((if (n.blue) Blue else Orange).copy(alpha = if (n.lit) 1f else 0.5f), radius = 4f * scale, center = Offset(field.x[i], field.y[i]))
             }
+        }
+    }
+}
+
+/** Node positions in screen pixels. They keep a constant speed and reflect off the screen edges. */
+private class NodeField(count: Int) {
+    val x = FloatArray(count)
+    val y = FloatArray(count)
+    private val vx = FloatArray(count)
+    private val vy = FloatArray(count)
+    private var w = 0f
+    private var h = 0f
+    private var radius = 0f
+
+    fun fit(graph: NetworkGraph, width: Float, height: Float, speed: Float) {
+        if (width <= 0f || height <= 0f) return
+        val scale = maxOf(width / GRAPH_W, height / GRAPH_H)
+        val dx = (width - GRAPH_W * scale) / 2f
+        val dy = (height - GRAPH_H * scale) / 2f
+        radius = 4f * scale
+        val first = w == 0f
+        w = width
+        h = height
+        val rnd = Random(7)
+        graph.nodes.forEachIndexed { i, n ->
+            // Start from the website's layout (nodes that fall off a cropped screen are pulled onto it).
+            x[i] = (dx + n.x * scale).coerceIn(radius, width - radius)
+            y[i] = (dy + n.y * scale).coerceIn(radius, height - radius)
+            if (first) {
+                val angle = rnd.nextFloat() * 2f * PI.toFloat()
+                val v = speed * (0.5f + rnd.nextFloat())
+                vx[i] = cos(angle) * v
+                vy[i] = sin(angle) * v
+            }
+        }
+    }
+
+    fun step(dt: Float) {
+        if (w == 0f) return
+        for (i in x.indices) {
+            var nx = x[i] + vx[i] * dt
+            var ny = y[i] + vy[i] * dt
+            if (nx < radius) { nx = radius; vx[i] = kotlin.math.abs(vx[i]) } else if (nx > w - radius) { nx = w - radius; vx[i] = -kotlin.math.abs(vx[i]) }
+            if (ny < radius) { ny = radius; vy[i] = kotlin.math.abs(vy[i]) } else if (ny > h - radius) { ny = h - radius; vy[i] = -kotlin.math.abs(vy[i]) }
+            x[i] = nx
+            y[i] = ny
         }
     }
 }
@@ -45,17 +114,18 @@ private const val GRAPH_H = 480f
 private val Blue = Color(0xFF2563EB)
 private val Orange = Color(0xFFE65C19)
 
-private class GraphLine(val x1: Float, val y1: Float, val x2: Float, val y2: Float, val blue: Boolean, val lit: Boolean)
+private class GraphLine(val a: Int, val b: Int, val blue: Boolean, val lit: Boolean)
 private class GraphNode(val x: Float, val y: Float, val blue: Boolean, val lit: Boolean)
 
 private class NetworkGraph(val lines: List<GraphLine>, val nodes: List<GraphNode>) {
     companion object {
         fun parse(): NetworkGraph {
             val nodes = NODES.split(';').map { it.split(',') }.map { GraphNode(it[0].toFloat(), it[1].toFloat(), it[2] == "1", it[3] == "1") }
-            val lit = nodes.filter { it.lit }.map { it.x to it.y }.toSet()
-            val lines = LINES.split(';').map { it.split(',') }.map {
-                val x1 = it[0].toFloat(); val y1 = it[1].toFloat(); val x2 = it[2].toFloat(); val y2 = it[3].toFloat()
-                GraphLine(x1, y1, x2, y2, it[4] == "1", (x1 to y1) in lit && (x2 to y2) in lit)
+            fun indexAt(x: Float, y: Float) = nodes.indexOfFirst { kotlin.math.abs(it.x - x) < 0.5f && kotlin.math.abs(it.y - y) < 0.5f }
+            val lines = LINES.split(';').map { it.split(',') }.mapNotNull {
+                val a = indexAt(it[0].toFloat(), it[1].toFloat())
+                val b = indexAt(it[2].toFloat(), it[3].toFloat())
+                if (a < 0 || b < 0) null else GraphLine(a, b, it[4] == "1", nodes[a].lit && nodes[b].lit)
             }
             return NetworkGraph(lines, nodes)
         }
