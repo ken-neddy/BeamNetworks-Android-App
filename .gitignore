@@ -19,3 +19,7 @@ keystore.properties
 *.jks
 *.keystore
 app/google-services.json
+
+# Changelog site: copied from CHANGELOG.md at publish time; Vercel link folder
+changelog-site/CHANGELOG.md
+.vercel

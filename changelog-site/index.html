@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beam Networks App Changelog</title>
+<meta name="description" content="What's new in the Beam Networks Android app.">
+<style>
+  :root {
+    --bg: #f3f4f6; --card: #ffffff; --ink: #111318; --muted: #5b616b; --line: #e6e8ec;
+    --navy: #2e449c; --orange: #f26223; --code: #eef0f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0e1015; --card: #171a21; --ink: #eceef2; --muted: #9aa1ad; --line: #272b34; --navy: #8ea2f0; --orange: #ff8a57; --code: #232732; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 40px 16px 8px; max-width: 760px; margin: 0 auto; }
+  header .brand { font-weight: 800; letter-spacing: -0.01em; color: var(--navy); }
+  header .brand span { color: var(--orange); }
+  main { max-width: 760px; margin: 0 auto; padding: 8px 16px 64px; }
+  article { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 8px 24px 24px; }
+  h1 { font-size: 1.9rem; letter-spacing: -0.02em; margin: 6px 0 4px; }
+  h2 { font-size: 1.3rem; margin: 32px 0 6px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--navy); }
+  h2:first-of-type { border-top: 0; padding-top: 8px; }
+  h3 { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--orange); margin: 22px 0 6px; }
+  p, li { color: var(--ink); }
+  li { margin: 6px 0; }
+  ul { padding-left: 22px; }
+  a { color: var(--navy); }
+  code { background: var(--code); padding: 1px 6px; border-radius: 6px; font-size: 0.9em; }
+  strong { font-weight: 700; }
+  footer { max-width: 760px; margin: 0 auto; padding: 0 16px 40px; color: var(--muted); font-size: 0.85rem; }
+  @media (max-width: 480px) { article { padding: 4px 16px 20px; border-radius: 12px; } h1 { font-size: 1.6rem; } }
+</style>
+</head>
+<body>
+<header><div class="brand">Beam <span>Networks</span> · App</div></header>
+<main>
+  <article id="content"><p>Loading the changelog…</p></article>
+</main>
+<footer>Also available as plain text: <a href="CHANGELOG.md">CHANGELOG.md</a></footer>
+<noscript><main><p>This page needs JavaScript. Read the <a href="CHANGELOG.md">changelog as plain text</a>.</p></main></noscript>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script>
+  fetch("CHANGELOG.md", { cache: "no-cache" })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+    .then(function (md) { document.getElementById("content").innerHTML = marked.parse(md); })
+    .catch(function () {
+      document.getElementById("content").innerHTML =
+        '<p>Couldn\'t load the changelog. <a href="CHANGELOG.md">Open it as plain text</a>.</p>';
+    });
+</script>
+</body>
+</html>
