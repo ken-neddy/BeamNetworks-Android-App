@@ -1,0 +1,13 @@
+{
+  "framework": null,
+  "buildCommand": "mkdir -p public && cp CHANGELOG.md public/CHANGELOG.md && cp changelog-site/index.html public/index.html",
+  "outputDirectory": "public",
+  "cleanUrls": true,
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- CHANGELOG.md changelog-site vercel.json",
+  "headers": [
+    {
+      "source": "/CHANGELOG.md",
+      "headers": [{ "key": "Content-Type", "value": "text/markdown; charset=utf-8" }]
+    }
+  ]
+}
