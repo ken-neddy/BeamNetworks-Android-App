@@ -43,6 +43,7 @@ import com.helper.beamnetworks.ui.components.FieldLabel
 import com.helper.beamnetworks.ui.components.FormField
 import com.helper.beamnetworks.ui.components.NetworkBackdrop
 import com.helper.beamnetworks.ui.components.PrimaryButton
+import com.helper.beamnetworks.ui.components.TextLink
 import com.helper.beamnetworks.ui.navigation.containerViewModel
 import com.helper.beamnetworks.ui.theme.BeamColors
 import com.helper.beamnetworks.ui.theme.BeamShapes
@@ -84,6 +85,7 @@ fun LoginScreen() {
     val vm = containerViewModel { app, _ -> LoginViewModel(app) }
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
+    var forgot by rememberSaveable { mutableStateOf(false) }
     Box(Modifier.fillMaxSize().background(BeamColors.Background)) {
         NetworkBackdrop(Modifier.fillMaxSize())
         Column(
@@ -145,12 +147,8 @@ fun LoginScreen() {
                 vm.error?.let { Text(it, style = BeamType.Meta.copy(color = BeamColors.Danger)) }
                 PrimaryButton(if (vm.busy) "Signing in…" else "Sign in", { vm.login(email, password) }, enabled = !vm.busy)
             }
-            Text(
-                "Forgot your password? Reset it from the Beam web dashboard.",
-                style = BeamType.Meta,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 4.dp),
-            )
+            TextLink("Forgot password?", { forgot = true }, Modifier.align(Alignment.CenterHorizontally))
         }
     }
+    if (forgot) ForgotPasswordSheet { forgot = false }
 }

@@ -179,3 +179,14 @@ data class InventoryMovementDto(
 // ---- Organisation settings (API.md §6). Read as raw JSON; only changed fields are PATCHed. ----
 
 typealias SettingsDto = JsonObject
+
+/** Staff password reset by SMS: ask for a code, then confirm it with the new password. */
+@Serializable
+data class PasswordResetRequest(val phone: String)
+
+@Serializable
+data class PasswordResetConfirm(
+    val phone: String,
+    val code: String,
+    @SerialName("new_password") val newPassword: String,
+)

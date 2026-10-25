@@ -13,6 +13,12 @@ interface BeamApi {
     @POST("auth/tenant/login/")
     suspend fun login(@Body body: LoginRequest): LoginResponse
 
+    @POST("auth/tenant/password-reset/request/")
+    suspend fun requestPasswordReset(@Body body: PasswordResetRequest)
+
+    @POST("auth/tenant/password-reset/confirm/")
+    suspend fun confirmPasswordReset(@Body body: PasswordResetConfirm)
+
     @POST("auth/tenant/logout/")
     suspend fun logout(@Body body: RefreshRequest)
 

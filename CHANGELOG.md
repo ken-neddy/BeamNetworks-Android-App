@@ -33,6 +33,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Caller ID popup.** When a customer calls, the app shows who they are, with their account details. {2026-10-25 07:19}
 - **Accounts, call log and M-Pesa messages.** Income and expenses (log an expense, edit it), the phone's call log with known customers highlighted, and M-Pesa messages that pre-fill a payment. {2026-10-25 07:19}
 - **Public changelog page.** This changelog is published at beam-networks-changelog.vercel.app and rebuilt when the repository is pushed; each entry shows its title and the date and time it was made. {2026-10-25 20:15}
+- **Forgot password.** The sign-in screen has a "Forgot password?" link that works like the website: enter the phone number on your Beam account, get a 6-digit code by SMS, then enter it with a new password (at least 8 characters). You can ask for a new code after a minute, and the old code stops working. {2026-10-25 21:09}
 
 ### Changed
 
