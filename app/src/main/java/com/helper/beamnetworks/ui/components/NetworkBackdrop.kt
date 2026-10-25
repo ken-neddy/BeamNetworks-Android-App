@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import kotlin.math.hypot
 import kotlin.random.Random
@@ -22,7 +23,8 @@ import kotlin.random.Random
  * The network-of-nodes graphic from the Beam billing sign-in page (billing.beamnetworks.co.ke/login),
  * drawn from its own coordinates. The website stretches it to fit; here it is scaled evenly to cover the
  * screen and centred, so it never distorts. The nodes and lines stay still; six green dots travel along
- * the lines from node to node, and a node flashes green when one arrives.
+ * the lines from node to node, and a node flashes green when one arrives. The dots never leave the screen:
+ * where a line runs off the edge, the dot turns round at the edge and goes back the way it came.
  */
 @Composable
 fun NetworkBackdrop(modifier: Modifier = Modifier) {
@@ -39,8 +41,8 @@ fun NetworkBackdrop(modifier: Modifier = Modifier) {
             }
         }
     }
-    Box(modifier.clipToBounds()) {
-        Canvas(Modifier.matchParentSize().blur(8.dp)) {
+    Box(modifier.clipToBounds().onSizeChanged { packets.fit(it.width.toFloat(), it.height.toFloat()) }) {
+        Canvas(Modifier.matchParentSize().blur(14.dp)) {
             frame // read so the canvas redraws every frame
             val scale = maxOf(size.width / GRAPH_W, size.height / GRAPH_H)
             val dx = (size.width - GRAPH_W * scale) / 2f
@@ -79,6 +81,50 @@ private class Packets(private val graph: NetworkGraph) {
     val list = List(6) { Packet(rnd.nextInt(graph.lines.size), rnd.nextBoolean(), rnd.nextFloat()) }
     val flash = FloatArray(graph.nodes.size)
 
+    // The part of the 660 x 480 canvas that is actually on screen (the rest is cropped), minus the dot's halo.
+    private var minX = -1e9f
+    private var maxX = 1e9f
+    private var minY = -1e9f
+    private var maxY = 1e9f
+
+    fun fit(width: Float, height: Float) {
+        if (width <= 0f || height <= 0f) return
+        val scale = maxOf(width / GRAPH_W, height / GRAPH_H)
+        val dx = (width - GRAPH_W * scale) / 2f
+        val dy = (height - GRAPH_H * scale) / 2f
+        minX = (0f - dx) / scale + HALO
+        maxX = (width - dx) / scale - HALO
+        minY = (0f - dy) / scale + HALO
+        maxY = (height - dy) / scale - HALO
+        // A dot that starts or ends up off screen is moved onto a line that is visible.
+        for (p in list) if (!onScreen(p)) relocate(p)
+    }
+
+    private fun xOf(p: Packet): Float {
+        val line = graph.lines[p.line]
+        val from = graph.nodes[if (p.forward) line.a else line.b]
+        val to = graph.nodes[if (p.forward) line.b else line.a]
+        return from.x + (to.x - from.x) * p.t
+    }
+
+    private fun yOf(p: Packet): Float {
+        val line = graph.lines[p.line]
+        val from = graph.nodes[if (p.forward) line.a else line.b]
+        val to = graph.nodes[if (p.forward) line.b else line.a]
+        return from.y + (to.y - from.y) * p.t
+    }
+
+    private fun onScreen(p: Packet) = xOf(p) in minX..maxX && yOf(p) in minY..maxY
+
+    private fun relocate(p: Packet) {
+        repeat(500) {
+            p.line = rnd.nextInt(graph.lines.size)
+            p.forward = rnd.nextBoolean()
+            p.t = rnd.nextFloat()
+            if (onScreen(p)) return
+        }
+    }
+
     fun step(dt: Float) {
         for (i in flash.indices) flash[i] = (flash[i] - dt / 0.9f).coerceAtLeast(0f)
         for (p in list) {
@@ -87,7 +133,11 @@ private class Packets(private val graph: NetworkGraph) {
             val to = graph.nodes[if (p.forward) line.b else line.a]
             val length = hypot(to.x - from.x, to.y - from.y).coerceAtLeast(1f)
             p.t += PACKET_SPEED / length * dt
-            if (p.t >= 1f) {
+            if (!onScreen(p)) {
+                // The line runs off the screen: bounce back along it.
+                p.forward = !p.forward
+                p.t = (1f - p.t).coerceIn(0f, 1f)
+            } else if (p.t >= 1f) {
                 val node = if (p.forward) line.b else line.a
                 flash[node] = 1f
                 val options = graph.linesAt(node)
@@ -102,6 +152,7 @@ private class Packets(private val graph: NetworkGraph) {
 
 /** Graph units (the 660 x 480 canvas) per second. */
 private const val PACKET_SPEED = 90f
+private const val HALO = 9.6f
 private const val GRAPH_W = 660f
 private const val GRAPH_H = 480f
 private val Blue = Color(0xFF2563EB)
