@@ -93,7 +93,7 @@ fun LoginScreen() {
     ) {
         Image(
             painterResource(R.drawable.beam_logo),
-            contentDescription = "Beam Networks",
+            contentDescription = "Beam OPS",
             modifier = Modifier
                 .padding(top = 24.dp, bottom = 8.dp)
                 .size(88.dp)
