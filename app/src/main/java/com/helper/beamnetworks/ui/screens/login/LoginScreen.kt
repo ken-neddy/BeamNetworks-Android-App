@@ -99,14 +99,14 @@ fun LoginScreen() {
             Box(
                 Modifier
                     .padding(top = 24.dp, bottom = 8.dp)
-                    .size(96.dp)
-                    .clip(RoundedCornerShape(26.dp))
+                    .size(88.dp)
+                    .clip(RoundedCornerShape(24.dp))
                     .align(Alignment.CenterHorizontally),
             ) {
                 Image(
                     painterResource(R.drawable.beam_logo),
                     contentDescription = "Beam OPS",
-                    modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = 1.15f, scaleY = 1.15f),
+                    modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = 1.05f, scaleY = 1.05f),
                 )
             }
             Text("Welcome back", style = BeamType.Greeting, textAlign = TextAlign.Center, modifier = Modifier.align(Alignment.CenterHorizontally))
