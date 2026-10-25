@@ -33,12 +33,17 @@ fun NetworkBackdrop(modifier: Modifier = Modifier) {
     val graph = remember { NetworkGraph.parse() }
     val speed = with(LocalDensity.current) { 16.dp.toPx() }
     val field = remember { NodeField(graph.nodes.size) }
+    val packets = remember { Packets(graph) }
     var frame by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(field, speed) {
+    LaunchedEffect(field, packets, speed) {
         var last = 0L
         while (true) {
             withFrameNanos { now ->
-                if (last != 0L) field.step(((now - last) / 1_000_000_000f).coerceAtMost(0.05f))
+                if (last != 0L) {
+                    val dt = ((now - last) / 1_000_000_000f).coerceAtMost(0.05f)
+                    field.step(dt)
+                    packets.step(dt, graph, field)
+                }
                 last = now
                 frame = now
             }
@@ -58,6 +63,20 @@ fun NetworkBackdrop(modifier: Modifier = Modifier) {
             }
             for ((i, n) in graph.nodes.withIndex()) {
                 drawCircle((if (n.blue) Blue else Orange).copy(alpha = if (n.lit) 1f else 0.5f), radius = 4f * scale, center = Offset(field.x[i], field.y[i]))
+                val flash = packets.flash[i]
+                if (flash > 0f) drawCircle(Green.copy(alpha = 0.5f * flash), radius = 4f * scale, center = Offset(field.x[i], field.y[i]))
+            }
+            // Data packets travelling along the lines, as on the website.
+            for (p in packets.list) {
+                val line = graph.lines[p.line]
+                val from = if (p.forward) line.a else line.b
+                val to = if (p.forward) line.b else line.a
+                val at = Offset(
+                    field.x[from] + (field.x[to] - field.x[from]) * p.t,
+                    field.y[from] + (field.y[to] - field.y[from]) * p.t,
+                )
+                drawCircle(Green.copy(alpha = 0.25f), radius = 9.6f * scale, center = at)
+                drawCircle(Green, radius = 4f * scale, center = at)
             }
         }
     }
@@ -113,11 +132,45 @@ private const val GRAPH_W = 660f
 private const val GRAPH_H = 480f
 private val Blue = Color(0xFF2563EB)
 private val Orange = Color(0xFFE65C19)
+private val Green = Color(0xFF22C55E)
+
+private class Packet(var line: Int, var forward: Boolean, var t: Float)
+
+/** Six green packets, each hopping from node to node along the lines; the node it reaches flashes green. */
+private class Packets(graph: NetworkGraph) {
+    private val rnd = Random(11)
+    val list = List(6) { Packet(rnd.nextInt(graph.lines.size), rnd.nextBoolean(), rnd.nextFloat()) }
+    val flash = FloatArray(graph.nodes.size)
+
+    fun step(dt: Float, graph: NetworkGraph, field: NodeField) {
+        for (i in flash.indices) flash[i] = (flash[i] - dt / 0.9f).coerceAtLeast(0f)
+        for (p in list) {
+            val line = graph.lines[p.line]
+            val from = if (p.forward) line.a else line.b
+            val to = if (p.forward) line.b else line.a
+            val length = kotlin.math.hypot(field.x[to] - field.x[from], field.y[to] - field.y[from]).coerceAtLeast(1f)
+            p.t += PACKET_SPEED_PX / length * dt
+            if (p.t >= 1f) {
+                flash[to] = 1f
+                val next = graph.linesAt(to).let { it[rnd.nextInt(it.size)] }
+                p.line = next
+                p.forward = graph.lines[next].a == to
+                p.t = 0f
+            }
+        }
+    }
+}
+
+private const val PACKET_SPEED_PX = 160f
 
 private class GraphLine(val a: Int, val b: Int, val blue: Boolean, val lit: Boolean)
 private class GraphNode(val x: Float, val y: Float, val blue: Boolean, val lit: Boolean)
 
 private class NetworkGraph(val lines: List<GraphLine>, val nodes: List<GraphNode>) {
+    private val byNode: Map<Int, List<Int>> = lines.indices.flatMap { i -> listOf(lines[i].a to i, lines[i].b to i) }.groupBy({ it.first }, { it.second })
+
+    fun linesAt(node: Int): List<Int> = byNode[node].orEmpty().ifEmpty { listOf(0) }
+
     companion object {
         fun parse(): NetworkGraph {
             val nodes = NODES.split(';').map { it.split(',') }.map { GraphNode(it[0].toFloat(), it[1].toFloat(), it[2] == "1", it[3] == "1") }

@@ -42,7 +42,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **App renamed to Beam OPS.** The name under the icon on the phone, and the app's own messages (for example the notification permission prompts), now say Beam OPS. Messages sent to customers still use Beam Networks. {2026-10-25 20:27}
 - **Bigger logo on the sign-in screen.** The logo is zoomed in so the mark fills its frame instead of floating in white space. {2026-10-25 20:41}
 - **Bigger home-screen icon.** The Beam logo now fills the app icon instead of sitting small in a lot of white space, and adapts to round and squircle icon shapes. {2026-10-25 20:43}
-- **Sign-in background.** The sign-in screen now has the same blue and orange network graphic as the Beam billing website sign-in page, scaled evenly to fit any screen size without stretching. The dots drift slowly and bounce off the edges of the screen, with the lines staying attached to them. {2026-10-25 20:51}
+- **Sign-in background.** The sign-in screen now has the same blue and orange network graphic as the Beam billing website sign-in page, scaled evenly to fit any screen size without stretching. The dots drift slowly and bounce off the edges of the screen, with the lines staying attached to them. Small green packets travel along the lines from dot to dot, and each dot flashes green when one arrives, as on the website. {2026-10-25 20:52}
 
 ### Fixed
 
