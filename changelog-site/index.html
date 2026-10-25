@@ -51,7 +51,7 @@
       // Entries end with {YYYY-MM-DD HH:MM} (East Africa Time); show it as a small line under the entry.
       var months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
       box.querySelectorAll("li").forEach(function (li) {
-        var m = li.innerHTML.match(/s*{(d{4})-(dd)-(dd) (dd:dd)}s*$/);
+        var m = li.innerHTML.match(/\s*\{(\d{4})-(\d\d)-(\d\d) (\d\d:\d\d)\}\s*$/);
         if (!m) return;
         li.innerHTML = li.innerHTML.slice(0, m.index) +
           '<time class="when" datetime="' + m[1] + "-" + m[2] + "-" + m[3] + "T" + m[4] + ':00+03:00">' +
