@@ -329,7 +329,11 @@ private fun LazyListScope.organisationSettings(vm: SettingsViewModel, onSmsLog: 
                 { label -> channels.firstOrNull { it.second == label }?.let { vm.setText("customer_notify_channel", it.first) } },
             )
             vm.smsBalance?.let { b ->
-                InfoRow("SMS balance", listOfNotNull(b.balance, if (b.low) "low" else null).joinToString(" · ").ifBlank { "—" }, showDivider = false)
+                InfoRow(
+                    "SMS balance",
+                    listOfNotNull(b.amount?.let { "%,.0f".format(java.util.Locale.US, it) + (b.unit?.let { u -> " $u" } ?: "") }, if (b.low) "low" else null).joinToString(" · ").ifBlank { "—" },
+                    showDivider = false,
+                )
             }
             FormField("Admin alert phones (comma separated)", vm.list("system_alert_phones"), { vm.setList("system_alert_phones", it) }, keyboardType = KeyboardType.Phone)
             TwoColumns(

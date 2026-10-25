@@ -375,11 +375,22 @@ data class AccountStatusDto(
     @SerialName("amount_due") val amountDue: String? = null,
 )
 
+/** SMS or PayHero balance. Beam sends the amounts as JSON numbers, but text like "Ksh6,030" is tolerated. */
 @Serializable
 data class BalanceDto(
     val provider: String? = null,
     val available: Boolean? = null,
-    val balance: String? = null,
+    val balance: kotlinx.serialization.json.JsonPrimitive? = null,
+    /** What the balance counts, e.g. "SMS"; absent for the PayHero wallet (Ksh). */
+    val unit: String? = null,
+    val threshold: kotlinx.serialization.json.JsonPrimitive? = null,
+    val reason: String? = null,
     val low: Boolean = false,
     val applicable: Boolean = true,
-)
+) {
+    val amount: Double? get() = balance.number()
+    val lowAt: Double? get() = threshold.number()
+}
+
+private fun kotlinx.serialization.json.JsonPrimitive?.number(): Double? =
+    this?.content?.takeIf { it != "null" }?.filter { it.isDigit() || it == '.' || it == '-' }?.toDoubleOrNull()

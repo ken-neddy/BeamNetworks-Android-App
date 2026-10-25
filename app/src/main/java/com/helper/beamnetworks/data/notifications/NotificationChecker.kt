@@ -331,7 +331,7 @@ class NotificationChecker(
                 id = "sms-low-$now",
                 category = NotificationCategory.Billing,
                 title = "SMS balance is low",
-                body = "Balance ${sms?.balance ?: "low"}. Top up so customers keep getting receipts and reminders.",
+                body = "Balance ${sms?.amount?.let { "%,.0f".format(java.util.Locale.US, it) } ?: "low"}. Top up so customers keep getting receipts and reminders.",
                 time = now,
             )
         }
@@ -340,7 +340,7 @@ class NotificationChecker(
                 id = "payhero-low-$now",
                 category = NotificationCategory.Billing,
                 title = "PayHero wallet is low",
-                body = "Balance ${payhero?.balance ?: "low"}. Top up so M‑Pesa prompts keep working.",
+                body = "Balance Ksh ${payhero?.amount?.let { "%,.2f".format(java.util.Locale.US, it) } ?: "low"}. Top up so M‑Pesa prompts keep working.",
                 time = now,
             )
         }

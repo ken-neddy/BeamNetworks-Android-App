@@ -48,6 +48,12 @@ import com.helper.beamnetworks.data.AppContainer
 import com.helper.beamnetworks.data.CustomerStatus
 import com.helper.beamnetworks.data.Loadable
 import com.helper.beamnetworks.ui.components.AvatarStack
+import com.helper.beamnetworks.data.api.BalanceDto
+import com.helper.beamnetworks.data.api.apiCall
+import com.helper.beamnetworks.ui.components.Tag
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import com.helper.beamnetworks.ui.components.BeamCard
 import com.helper.beamnetworks.ui.components.BeamDivider
 import com.helper.beamnetworks.ui.components.BottomSpacer
@@ -101,6 +107,9 @@ data class HomeUi(
     val upcoming: List<UpcomingInstall> = emptyList(),
     val refreshing: Boolean = false,
     val error: String? = null,
+    /** Null when Beam did not return it (no permission, or not the tenant's gateway). */
+    val sms: BalanceDto? = null,
+    val payhero: BalanceDto? = null,
 ) {
     val attentionCount: Int get() = listOf(owingCount > 0, suspendedCount > 0, lowStock.isNotEmpty()).count { it }
 }
@@ -113,7 +122,9 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         app.tickets.tickets.state,
     ) { customers, payments, invoices, tickets -> Quad(customers, payments, invoices, tickets) }
 
-    val ui = combine(loads, app.jobs.jobs.state, app.inventory.items.state, app.sessions.session) { l, jobs, stock, session ->
+    private val balances = MutableStateFlow<Pair<BalanceDto?, BalanceDto?>>(null to null)
+
+    val ui = combine(loads, app.jobs.jobs.state, app.inventory.items.state, app.sessions.session, balances) { l, jobs, stock, session, balance ->
         val today = LocalDate.now(zone)
         val monthStart = today.withDayOfMonth(1)
         val payments = l.payments.items
@@ -145,6 +156,8 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
                 .map { UpcomingInstall(it.id, whenLabel(it.scheduled), it.customerName, it.technicianName) },
             refreshing = listOf(l.customers, l.payments, l.tickets).any { it.loading },
             error = listOf(l.customers, l.payments).firstNotNullOfOrNull { it.error },
+            sms = balance.first,
+            payhero = balance.second?.takeIf { it.applicable },
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUi())
 
@@ -157,9 +170,22 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
             jobs.jobs.ensureLoaded()
             inventory.items.ensureLoaded()
         }
+        loadBalances()
     }
 
-    fun refresh() = app.refreshAll()
+    /** SMS and PayHero balances; staff without access to them simply don't see the cards. */
+    private fun loadBalances() {
+        viewModelScope.launch {
+            val sms = async { runCatching { apiCall { app.api.smsBalance() } }.getOrNull() }
+            val payhero = async { runCatching { apiCall { app.api.payheroBalance() } }.getOrNull() }
+            balances.value = sms.await() to payhero.await()
+        }
+    }
+
+    fun refresh() {
+        app.refreshAll()
+        loadBalances()
+    }
 
     private data class Quad<A, B, C, D>(val customers: Loadable<A>, val payments: Loadable<B>, val invoices: Loadable<C>, val tickets: Loadable<D>)
 }
@@ -208,6 +234,20 @@ fun HomeScreen(
                     StatCard(ui.customers, "Customers", Modifier.weight(1f)) { onCustomers("all") }
                     StatCard(ui.online, "Online now", Modifier.weight(1f)) { onCustomers("online") }
                     StatCard(ui.openTickets, "Open tickets", Modifier.weight(1f), onTickets)
+                }
+            }
+            if (ui.sms != null || ui.payhero != null) {
+                item {
+                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ui.payhero?.let { b ->
+                            BalanceCard("PayHero wallet", b, Modifier.weight(1f)) { amount -> ksh(amount) }
+                        }
+                        ui.sms?.let { b ->
+                            BalanceCard("SMS balance", b, Modifier.weight(1f)) { amount ->
+                                String.format(Locale.US, "%,.0f", amount) + (b.unit?.let { " $it" } ?: "")
+                            }
+                        }
+                    }
                 }
             }
             item { ChartCard(ui, selectedDay.coerceIn(0, (ui.chart.size - 1).coerceAtLeast(0))) { selectedDay = it } }
@@ -260,6 +300,31 @@ fun HomeScreen(
             }
             item { BottomSpacer() }
         }
+    }
+}
+
+/** A wallet or SMS balance; turns red with a "Low" tag when Beam says it is below its alert level. */
+@Composable
+private fun BalanceCard(label: String, balance: BalanceDto, modifier: Modifier, format: (Double) -> String) {
+    val amount = balance.amount
+    BeamCard(modifier, padding = PaddingValues(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = BeamType.Meta, modifier = Modifier.weight(1f))
+            if (balance.low) Tag("Low", Tones.Red)
+        }
+        Text(
+            if (balance.available == false || amount == null) "Unavailable" else format(amount),
+            style = BeamType.Stat.copy(color = if (balance.low) BeamColors.Danger else BeamColors.Ink),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        val note = when {
+            balance.available == false || amount == null -> balance.reason?.ifBlank { null } ?: "Couldn't reach the provider"
+            balance.low -> "Top up soon"
+            balance.lowAt != null -> "Alert below " + format(balance.lowAt!!)
+            else -> null
+        }
+        if (note != null) Text(note, style = BeamType.Meta, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
