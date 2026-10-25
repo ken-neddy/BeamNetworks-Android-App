@@ -29,7 +29,7 @@ Style rules, because the page is public and read by staff, not developers:
 - Describe the app only. Never include passwords, tokens, keystore details, customer names or phone
   numbers, the business's money figures, account or billing-system findings, or internal file paths.
 - End every bullet with the time it was made, in East Africa Time, as ` {YYYY-MM-DD HH:MM}` (check the clock
-  with `date`). The page shows it under the entry's bold title, above the description. If you fold a follow-up into an existing bullet, update its time.
+  with `date`). The page shows it in brackets after the entry's bold title, with the description below. If you fold a follow-up into an existing bullet, update its time.
 - Fold small follow-ups into the existing bullet instead of adding near-duplicates.
 - Do not list pure refactors, tests or build-tool changes unless users would notice them
   (the one exception is a build/Gradle upgrade, which has a line under Changed).
