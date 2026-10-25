@@ -106,8 +106,10 @@ data class HomeUi(
     val upcoming: List<UpcomingInstall> = emptyList(),
     val refreshing: Boolean = false,
     val error: String? = null,
+    /** Balances at or below their alert level, as (title, detail). Empty when Beam says nothing is low. */
+    val lowBalances: List<Pair<String, String>> = emptyList(),
 ) {
-    val attentionCount: Int get() = listOf(owingCount > 0, suspendedCount > 0, lowStock.isNotEmpty()).count { it }
+    val attentionCount: Int get() = listOf(owingCount > 0, suspendedCount > 0, lowStock.isNotEmpty(), lowBalances.isNotEmpty()).count { it }
 }
 
 class HomeViewModel(private val app: AppContainer) : ViewModel() {
@@ -118,7 +120,9 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
         app.tickets.tickets.state,
     ) { customers, payments, invoices, tickets -> Quad(customers, payments, invoices, tickets) }
 
-    val ui = combine(loads, app.jobs.jobs.state, app.inventory.items.state, app.sessions.session) { l, jobs, stock, session ->
+    private val lowBalances = MutableStateFlow<List<Pair<String, String>>>(emptyList())
+
+    val ui = combine(loads, app.jobs.jobs.state, app.inventory.items.state, app.sessions.session, lowBalances) { l, jobs, stock, session, low ->
         val today = LocalDate.now(zone)
         val monthStart = today.withDayOfMonth(1)
         val payments = l.payments.items
@@ -146,6 +150,7 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
             owingTotal = customers.filter { it.owing }.sumOf { it.amountDue },
             suspendedCount = customers.count { it.status == CustomerStatus.Suspended },
             lowStock = stock.items.filter { it.isLow }.map { it.name },
+            lowBalances = low,
             upcoming = jobs.items.filter { it.status.isUpcoming }.sortedBy { it.scheduled }.take(3)
                 .map { UpcomingInstall(it.id, whenLabel(it.scheduled), it.customerName, it.technicianName) },
             refreshing = listOf(l.customers, l.payments, l.tickets).any { it.loading },
@@ -162,10 +167,24 @@ class HomeViewModel(private val app: AppContainer) : ViewModel() {
             jobs.jobs.ensureLoaded()
             inventory.items.ensureLoaded()
         }
+        loadLowBalances()
+    }
+
+    /** Only balances Beam flags as low reach the dashboard; the full figures live in Settings. */
+    private fun loadLowBalances() {
+        viewModelScope.launch {
+            val sms = async { runCatching { apiCall { app.api.smsBalance() } }.getOrNull() }
+            val payhero = async { runCatching { apiCall { app.api.payheroBalance() } }.getOrNull() }
+            lowBalances.value = listOfNotNull(
+                payhero.await()?.takeIf { it.applicable && it.low }?.let { b -> "PayHero wallet is low" to (b.amount?.let { ksh(it) } ?: "Top up soon") },
+                sms.await()?.takeIf { it.low }?.let { b -> "SMS balance is low" to (b.amount?.let { String.format(Locale.US, "%,.0f", it) + (b.unit?.let { u -> " $u" } ?: "") } ?: "Top up soon") },
+            )
+        }
     }
 
     fun refresh() {
         app.refreshAll()
+        loadLowBalances()
     }
 
     private data class Quad<A, B, C, D>(val customers: Loadable<A>, val payments: Loadable<B>, val invoices: Loadable<C>, val tickets: Loadable<D>)
@@ -181,6 +200,7 @@ fun HomeScreen(
     onInstalls: () -> Unit,
     onInstall: (Int) -> Unit,
     onStock: () -> Unit,
+    onSettings: () -> Unit,
 ) {
     val vm = containerViewModel { app, _ -> HomeViewModel(app) }
     val ui by vm.ui.collectAsStateWithLifecycle()
@@ -226,6 +246,9 @@ fun HomeScreen(
                 }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ui.lowBalances.forEach { (title, detail) ->
+                            NavRow(BeamIcons.Alert, Tones.Red, title, "$detail left — tap to see balances", onSettings)
+                        }
                         if (ui.owingCount > 0) {
                             NavRow(BeamIcons.Banknote, Tones.Red, "${ui.owingCount} customer${if (ui.owingCount == 1) "" else "s"} owing", "${kshShort(ui.owingTotal)} outstanding", { onCustomers("owing") })
                         }

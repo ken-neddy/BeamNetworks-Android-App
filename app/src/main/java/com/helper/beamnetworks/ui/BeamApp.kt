@@ -274,6 +274,7 @@ private fun BeamShell(app: AppContainer) {
                         onInstalls = { nav.goToTab(InstallsRoute("upcoming"), restore = false) },
                         onInstall = { nav.navigate(InstallDetailRoute(it)) },
                         onStock = { nav.navigate(StockRoute) },
+                        onSettings = { nav.navigate(SettingsRoute) { launchSingleTop = true } },
                     )
                 }
                 composable<CustomersRoute> { backStack ->

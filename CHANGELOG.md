@@ -7,7 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **PayHero and SMS balances in Settings.** Two cards at the top of Settings show the PayHero wallet and the SMS balance. A balance below its alert level turns red with a "Low" tag. They are hidden for staff who can't see them, and the PayHero card is hidden when PayHero isn't your payment gateway.
+- **PayHero and SMS balances in Settings.** Two cards at the top of Settings show the PayHero wallet and the SMS balance. A balance below its alert level turns red with a "Low" tag. They are hidden for staff who can't see them, and the PayHero card is hidden when PayHero isn't your payment gateway. When one is below its alert level, a red "Needs attention" row appears on the dashboard and opens Settings.
 - **Side menu.** A new menu button (top left) opens every part of the app in one place: Dashboard, Customers, Hotspot, Jobs, Tickets, Payments, Invoices, Income & expenses, Network status, Live sessions, Customer map, Announcements, SMS & email log, M-Pesa messages, Call log, Stock, Map, Settings and Sign out. Tickets and Stock show a count of what needs attention.
 - **Hotspot.** Hotspot customers (suspend, reactivate, text their access code), vouchers (issue paid or free, resend, share the code) and live hotspot sessions (end a session).
 - **Payments register.** Search and filter every payment. Confirm a pending M-Pesa payment, send the M-Pesa prompt again, and refund a payment (admins only, with a confirmation step).
