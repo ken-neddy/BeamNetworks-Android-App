@@ -57,6 +57,7 @@ import com.helper.beamnetworks.ui.theme.BeamColors
 import com.helper.beamnetworks.ui.theme.BeamType
 import com.helper.beamnetworks.ui.theme.TonePair
 import com.helper.beamnetworks.ui.theme.Tones
+import com.helper.beamnetworks.util.ksh
 import com.helper.beamnetworks.util.parseDateTime
 import com.helper.beamnetworks.util.relativeAge
 import com.helper.beamnetworks.util.whenLabel
@@ -189,6 +190,8 @@ class SettingsViewModel(val app: AppContainer) : ViewModel() {
         private set
     var smsBalance by mutableStateOf<BalanceDto?>(null)
         private set
+    var payheroBalance by mutableStateOf<BalanceDto?>(null)
+        private set
     var saving by mutableStateOf(false)
         private set
     val changes = mutableStateMapOf<String, JsonElement>()
@@ -210,6 +213,7 @@ class SettingsViewModel(val app: AppContainer) : ViewModel() {
                 error = e.message
             }
             smsBalance = runCatching { apiCall { app.api.smsBalance() } }.getOrNull()
+            payheroBalance = runCatching { apiCall { app.api.payheroBalance() } }.getOrNull()?.takeIf { it.applicable }
         }
     }
 
@@ -285,6 +289,19 @@ fun SettingsScreen(onAppNotifications: () -> Unit, onSmsLog: () -> Unit) {
                 )
             }
         }
+        if (vm.smsBalance != null || vm.payheroBalance != null) {
+            item { SectionHeader("Balances") }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    vm.payheroBalance?.let { b -> BalanceCard("PayHero wallet", b, Modifier.weight(1f)) { amount -> ksh(amount) } }
+                    vm.smsBalance?.let { b ->
+                        BalanceCard("SMS balance", b, Modifier.weight(1f)) { amount ->
+                            String.format(java.util.Locale.US, "%,.0f", amount) + (b.unit?.let { " $it" } ?: "")
+                        }
+                    }
+                }
+            }
+        }
         val s = vm.settings
         when {
             s == null && vm.error != null -> item {
@@ -328,13 +345,6 @@ private fun LazyListScope.organisationSettings(vm: SettingsViewModel, onSmsLog: 
                 channels.map { it.second },
                 { label -> channels.firstOrNull { it.second == label }?.let { vm.setText("customer_notify_channel", it.first) } },
             )
-            vm.smsBalance?.let { b ->
-                InfoRow(
-                    "SMS balance",
-                    listOfNotNull(b.amount?.let { "%,.0f".format(java.util.Locale.US, it) + (b.unit?.let { u -> " $u" } ?: "") }, if (b.low) "low" else null).joinToString(" · ").ifBlank { "—" },
-                    showDivider = false,
-                )
-            }
             FormField("Admin alert phones (comma separated)", vm.list("system_alert_phones"), { vm.setList("system_alert_phones", it) }, keyboardType = KeyboardType.Phone)
             TwoColumns(
                 { SecondaryButton("Send test SMS", vm::testSms, bold = true) },
@@ -394,4 +404,29 @@ private fun LazyListScope.organisationSettings(vm: SettingsViewModel, onSmsLog: 
 @Composable
 private fun SettingsCard(content: @Composable () -> Unit) {
     BeamCard(padding = PaddingValues(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+}
+
+/** A wallet or SMS balance; turns red with a "Low" tag when Beam says it is below its alert level. */
+@Composable
+private fun BalanceCard(label: String, balance: BalanceDto, modifier: Modifier, format: (Double) -> String) {
+    val amount = balance.amount
+    BeamCard(modifier, padding = PaddingValues(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = BeamType.Meta, modifier = Modifier.weight(1f))
+            if (balance.low) Tag("Low", Tones.Red)
+        }
+        Text(
+            if (balance.available == false || amount == null) "Unavailable" else format(amount),
+            style = BeamType.Stat.copy(color = if (balance.low) BeamColors.Danger else BeamColors.Ink),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        val note = when {
+            balance.available == false || amount == null -> balance.reason?.ifBlank { null } ?: "Couldn't reach the provider"
+            balance.low -> "Top up soon"
+            balance.lowAt != null -> "Alert below " + format(balance.lowAt!!)
+            else -> null
+        }
+        if (note != null) Text(note, style = BeamType.Meta, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
 }
