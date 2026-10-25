@@ -22,6 +22,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Stock:** item types (consumable, asset, tool), a Move button (issue to a technician, receive, return, install, write off), a movement history tab, archiving a product, and SKU, unit cost and selling price when adding one. {2026-10-25 17:52}
 - **Invoices:** a quantity field when raising a one-off invoice. {2026-10-25 17:52}
 - **Signed release builds.** A release APK is signed with a private key kept outside the repository. {2026-10-25 07:19}
+- **App rebuilt on the live Beam billing system.** Customers, payments, invoices, tickets, jobs and stock now come straight from billing.beamnetworks.co.ke instead of the old separate cloud copy, so the app and the website always agree. {2026-10-25 07:19}
+- **Sign in with your Beam staff account.** The app stays signed in and renews its access on its own; sign out is in Settings and the side menu. {2026-10-25 07:19}
+- **New look and navigation.** Redesigned dashboard, bottom navigation, list and detail screens, and bottom-sheet forms in the Beam Networks colours and logo. {2026-10-25 07:19}
+- **Money tools.** Unmatched paybill receipts can be assigned to a customer, pending payments can be verified, and a payments report shows collections. {2026-10-25 07:19}
+- **Network status.** Routers online or offline, outages, planned maintenance (create and cancel) and customer downtime, with a Compensate action that credits customers for time offline. {2026-10-25 07:19}
+- **Live sessions and customer map.** See who is connected right now, and a map of customers by location. {2026-10-25 07:19}
+- **Announcements.** Write and send an announcement to customers. {2026-10-25 07:19}
+- **Alerts on the phone.** Notifications for routers going offline or back, outages and monitoring alerts, customer downtime, payments received, suspensions and reconnections, new tickets and SLA breaches, Beam account and low SMS or PayHero balances, and low stock. Each type can be switched on or off in App alerts. {2026-10-25 07:19}
+- **Caller ID popup.** When a customer calls, the app shows who they are, with their account details. {2026-10-25 07:19}
+- **Accounts, call log and M-Pesa messages.** Income and expenses (log an expense, edit it), the phone's call log with known customers highlighted, and M-Pesa messages that pre-fill a payment. {2026-10-25 07:19}
+- **Public changelog page.** This changelog is published at beam-networks-changelog.vercel.app and rebuilt when the repository is pushed; each entry shows its title and the date and time it was made. {2026-10-25 20:15}
 
 ### Changed
 

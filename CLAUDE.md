@@ -6,6 +6,7 @@ Any change that users of the app would notice (feature, fix, behaviour change, r
 `CHANGELOG.md` in the same piece of work, before it is committed or pushed. Follow the
 `update-changelog` skill (`.claude/skills/update-changelog/SKILL.md`): it covers how to write the
 entry, what must never appear in it (the page is public), and how the Vercel page auto-deploys on push.
+Never leave anything out: every change goes in, however small, and the log must cover every commit.
 Mention in your final message that the changelog was updated.
 
 ## Other project facts
