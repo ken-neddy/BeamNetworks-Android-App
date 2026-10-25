@@ -57,7 +57,7 @@
         var body = li.innerHTML.slice(0, m.index);
         // Title = the bold feature name, or the first sentence when the entry has none.
         var t = body.match(/^<strong>([\s\S]*?)<\/strong>\s*/) || body.match(/^([^.<]{3,90}?)\.(?:\s+|$)/);
-        var title = t ? t[1].replace(/\.$/, "") : "";
+        var title = t ? t[1].replace(/[.:]$/, "") : "";
         var rest = t ? body.slice(t[0].length) : body;
         li.innerHTML = (title ? '<strong class="title">' + title + "</strong>" : "") +
           '<time class="when" datetime="' + m[1] + "-" + m[2] + "-" + m[3] + "T" + m[4] + ':00+03:00">' +

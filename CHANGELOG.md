@@ -21,34 +21,34 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Jobs:** a priority, and "what was done", a completion code and "customer confirmed" when marking a job done. {2026-10-25 17:52}
 - **Stock:** item types (consumable, asset, tool), a Move button (issue to a technician, receive, return, install, write off), a movement history tab, archiving a product, and SKU, unit cost and selling price when adding one. {2026-10-25 17:52}
 - **Invoices:** a quantity field when raising a one-off invoice. {2026-10-25 17:52}
-- Signed release builds. A release APK is signed with a private key kept outside the repository. {2026-10-25 07:19}
+- **Signed release builds.** A release APK is signed with a private key kept outside the repository. {2026-10-25 07:19}
 
 ### Changed
 
-- The notification bell moved next to the account avatar (top right) to make room for the menu button. {2026-10-25 17:52}
-- The Customers screen opens on the **Online** filter, which is now first in the list. The dashboard's Customers card still opens on All. {2026-10-25 17:52}
-- Recording a payment with an M-Pesa code first checks Beam. A code that is already recorded is not recorded again, and an unmatched paybill deposit with that code is attached to the customer instead of being duplicated as cash. {2026-10-25 17:52}
+- **Notification bell moved.** The bell moved next to the account avatar (top right) to make room for the menu button. {2026-10-25 17:52}
+- **Customers opens on Online.** The Customers screen opens on the **Online** filter, which is now first in the list. The dashboard's Customers card still opens on All. {2026-10-25 17:52}
+- **Duplicate M-Pesa payments.** Recording a payment with an M-Pesa code first checks Beam. A code that is already recorded is not recorded again, and an unmatched paybill deposit with that code is attached to the customer instead of being duplicated as cash. {2026-10-25 17:52}
 
 ### Fixed
 
-- Low SMS and PayHero balance alerts never arrived, because the app couldn't read the balance figures Beam sends. They are read correctly now. {2026-10-25 18:17}
-- A customer's **Recent payments** list was empty for anyone who had not paid this month. It now shows that customer's own payment history. {2026-10-25 17:52}
-- The dashboard's "billed" total showed Ksh 0 when credit had been applied. It now counts what was billed before credit. {2026-10-25 17:52}
-- Jobs created on the website (for example from a ticket) showed their description as the job's location. The text now appears as notes. {2026-10-25 17:52}
-- Cancelled jobs disappeared from the Jobs screen. They now appear with the completed jobs, tagged Cancelled. {2026-10-25 17:52}
-- Saving a customer's details could erase their location if the full record had not loaded. Location is now only sent once it has loaded. {2026-10-25 17:52}
+- **Low balance alerts.** They never arrived, because the app couldn't read the balance figures Beam sends. They are read correctly now. {2026-10-25 18:17}
+- **Recent payments.** A customer's list was empty for anyone who had not paid this month. It now shows that customer's own payment history. {2026-10-25 17:52}
+- **Billed total.** The dashboard's "billed" total showed Ksh 0 when credit had been applied. It now counts what was billed before credit. {2026-10-25 17:52}
+- **Jobs from the website.** Jobs created on the website (for example from a ticket) showed their description as the job's location. The text now appears as notes. {2026-10-25 17:52}
+- **Cancelled jobs.** Cancelled jobs disappeared from the Jobs screen. They now appear with the completed jobs, tagged Cancelled. {2026-10-25 17:52}
+- **Saving a customer.** Saving a customer's details could erase their location if the full record had not loaded. Location is now only sent once it has loaded. {2026-10-25 17:52}
 
 ## [1.0] - 2026-03-05
 
 ### Added
 
-- Redesigned interface with a dashboard, bottom navigation, list and detail screens and bottom-sheet forms. {2026-03-05 19:42}
-- Customers saved to the cloud and shown in the app for contacting, with open tickets on the dashboard. {2026-03-05 19:42}
-- Ticket manager. {2026-03-05 19:42}
+- **Redesigned app.** Redesigned interface with a dashboard, bottom navigation, list and detail screens and bottom-sheet forms. {2026-03-05 19:42}
+- **Customers in the cloud.** Customers saved to the cloud and shown in the app for contacting, with open tickets on the dashboard. {2026-03-05 19:42}
+- **Ticket manager.** {2026-03-05 19:42}
 
 ### Changed
 
-- Gradle upgraded to 9.2.1 and Kotlin to 2.3.0 (October 2026) for Java 25 support. {2026-10-24 16:59}
+- **Gradle and Kotlin upgrade.** Gradle upgraded to 9.2.1 and Kotlin to 2.3.0 (October 2026) for Java 25 support. {2026-10-24 16:59}
 
 ## Earlier
 
