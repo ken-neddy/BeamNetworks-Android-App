@@ -14,39 +14,33 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.sin
+import kotlin.math.hypot
 import kotlin.random.Random
 
 /**
  * The network-of-nodes graphic from the Beam billing sign-in page (billing.beamnetworks.co.ke/login),
  * drawn from its own coordinates. The website stretches it to fit; here it is scaled evenly to cover the
- * screen and centred, so it never distorts. The nodes and lines stay where they are; the six green dots
- * move across the screen and bounce off its edges.
+ * screen and centred, so it never distorts. The nodes and lines stay still; six green dots travel along
+ * the lines from node to node, and a node flashes green when one arrives.
  */
 @Composable
 fun NetworkBackdrop(modifier: Modifier = Modifier) {
     val graph = remember { NetworkGraph.parse() }
-    val speed = with(LocalDensity.current) { 60.dp.toPx() }
-    val dots = remember { MovingDots() }
+    val packets = remember { Packets(graph) }
     var frame by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(dots) {
+    LaunchedEffect(packets) {
         var last = 0L
         while (true) {
             withFrameNanos { now ->
-                if (last != 0L) dots.step(((now - last) / 1_000_000_000f).coerceAtMost(0.05f))
+                if (last != 0L) packets.step(((now - last) / 1_000_000_000f).coerceAtMost(0.05f))
                 last = now
                 frame = now
             }
         }
     }
-    Box(modifier.clipToBounds().onSizeChanged { dots.fit(it.width.toFloat(), it.height.toFloat(), speed) }) {
-        Canvas(Modifier.matchParentSize().blur(3.dp)) {
+    Box(modifier.clipToBounds()) {
+        Canvas(Modifier.matchParentSize().blur(8.dp)) {
             frame // read so the canvas redraws every frame
             val scale = maxOf(size.width / GRAPH_W, size.height / GRAPH_H)
             val dx = (size.width - GRAPH_W * scale) / 2f
@@ -55,16 +49,21 @@ fun NetworkBackdrop(modifier: Modifier = Modifier) {
             for (l in graph.lines) {
                 drawLine(
                     color = (if (l.blue) Blue else Orange).copy(alpha = if (l.lit) 0.55f else 0.16f),
-                    start = at(l.x1, l.y1),
-                    end = at(l.x2, l.y2),
+                    start = at(graph.nodes[l.a].x, graph.nodes[l.a].y),
+                    end = at(graph.nodes[l.b].x, graph.nodes[l.b].y),
                     strokeWidth = scale,
                 )
             }
-            for (n in graph.nodes) {
+            for ((i, n) in graph.nodes.withIndex()) {
                 drawCircle((if (n.blue) Blue else Orange).copy(alpha = if (n.lit) 1f else 0.5f), radius = 4f * scale, center = at(n.x, n.y))
+                val flash = packets.flash[i]
+                if (flash > 0f) drawCircle(Green.copy(alpha = 0.6f * flash), radius = 4f * scale, center = at(n.x, n.y))
             }
-            for (i in dots.x.indices) {
-                val c = Offset(dots.x[i], dots.y[i])
+            for (p in packets.list) {
+                val line = graph.lines[p.line]
+                val from = graph.nodes[if (p.forward) line.a else line.b]
+                val to = graph.nodes[if (p.forward) line.b else line.a]
+                val c = at(from.x + (to.x - from.x) * p.t, from.y + (to.y - from.y) * p.t)
                 drawCircle(Green.copy(alpha = 0.25f), radius = 9.6f * scale, center = c)
                 drawCircle(Green, radius = 4f * scale, center = c)
             }
@@ -72,71 +71,60 @@ fun NetworkBackdrop(modifier: Modifier = Modifier) {
     }
 }
 
-/** The green dots, in screen pixels. Each keeps a constant velocity and reflects off the screen edges. */
-private class MovingDots {
-    val x = FloatArray(START.size)
-    val y = FloatArray(START.size)
-    private val vx = FloatArray(START.size)
-    private val vy = FloatArray(START.size)
-    private var w = 0f
-    private var h = 0f
-    private var radius = 0f
+private class Packet(var line: Int, var forward: Boolean, var t: Float)
 
-    fun fit(width: Float, height: Float, speed: Float) {
-        if (width <= 0f || height <= 0f) return
-        val scale = maxOf(width / GRAPH_W, height / GRAPH_H)
-        val dx = (width - GRAPH_W * scale) / 2f
-        val dy = (height - GRAPH_H * scale) / 2f
-        radius = 9.6f * scale
-        val first = w == 0f
-        w = width
-        h = height
-        val rnd = Random(7)
-        START.forEachIndexed { i, (sx, sy) ->
-            x[i] = (dx + sx * scale).coerceIn(radius, width - radius)
-            y[i] = (dy + sy * scale).coerceIn(radius, height - radius)
-            if (first) {
-                val angle = rnd.nextFloat() * 2f * PI.toFloat()
-                val v = speed * (0.7f + rnd.nextFloat() * 0.6f)
-                vx[i] = cos(angle) * v
-                vy[i] = sin(angle) * v
-            }
-        }
-    }
+/** Six green packets, each hopping from node to node along the lines. */
+private class Packets(private val graph: NetworkGraph) {
+    private val rnd = Random(11)
+    val list = List(6) { Packet(rnd.nextInt(graph.lines.size), rnd.nextBoolean(), rnd.nextFloat()) }
+    val flash = FloatArray(graph.nodes.size)
 
     fun step(dt: Float) {
-        if (w == 0f) return
-        for (i in x.indices) {
-            var nx = x[i] + vx[i] * dt
-            var ny = y[i] + vy[i] * dt
-            if (nx < radius) { nx = radius; vx[i] = abs(vx[i]) } else if (nx > w - radius) { nx = w - radius; vx[i] = -abs(vx[i]) }
-            if (ny < radius) { ny = radius; vy[i] = abs(vy[i]) } else if (ny > h - radius) { ny = h - radius; vy[i] = -abs(vy[i]) }
-            x[i] = nx
-            y[i] = ny
+        for (i in flash.indices) flash[i] = (flash[i] - dt / 0.9f).coerceAtLeast(0f)
+        for (p in list) {
+            val line = graph.lines[p.line]
+            val from = graph.nodes[if (p.forward) line.a else line.b]
+            val to = graph.nodes[if (p.forward) line.b else line.a]
+            val length = hypot(to.x - from.x, to.y - from.y).coerceAtLeast(1f)
+            p.t += PACKET_SPEED / length * dt
+            if (p.t >= 1f) {
+                val node = if (p.forward) line.b else line.a
+                flash[node] = 1f
+                val options = graph.linesAt(node)
+                val next = options[rnd.nextInt(options.size)]
+                p.line = next
+                p.forward = graph.lines[next].a == node
+                p.t = 0f
+            }
         }
     }
 }
 
+/** Graph units (the 660 x 480 canvas) per second. */
+private const val PACKET_SPEED = 90f
 private const val GRAPH_W = 660f
 private const val GRAPH_H = 480f
 private val Blue = Color(0xFF2563EB)
 private val Orange = Color(0xFFE65C19)
 private val Green = Color(0xFF22C55E)
 
-/** Where the website's six green dots start, in graph coordinates. */
-private val START = listOf(580.4f to 151.8f, 512.9f to 241.2f, 96.5f to 59.4f, 406.5f to 203.4f, 211.6f to 99.4f, 461.6f to 271.8f)
-
-private class GraphLine(val x1: Float, val y1: Float, val x2: Float, val y2: Float, val blue: Boolean, val lit: Boolean)
+private class GraphLine(val a: Int, val b: Int, val blue: Boolean, val lit: Boolean)
 private class GraphNode(val x: Float, val y: Float, val blue: Boolean, val lit: Boolean)
 
 private class NetworkGraph(val lines: List<GraphLine>, val nodes: List<GraphNode>) {
+    private val byNode: Map<Int, List<Int>> =
+        lines.indices.flatMap { i -> listOf(lines[i].a to i, lines[i].b to i) }.groupBy({ it.first }, { it.second })
+
+    fun linesAt(node: Int): List<Int> = byNode[node].orEmpty().ifEmpty { listOf(0) }
+
     companion object {
         fun parse(): NetworkGraph {
             val nodes = NODES.split(';').map { it.split(',') }.map { GraphNode(it[0].toFloat(), it[1].toFloat(), it[2] == "1", it[3] == "1") }
-            val lit = nodes.filter { it.lit }.map { it.x to it.y }.toSet()
-            val lines = LINES.split(';').map { it.split(',') }.map {
-                val x1 = it[0].toFloat(); val y1 = it[1].toFloat(); val x2 = it[2].toFloat(); val y2 = it[3].toFloat()
-                GraphLine(x1, y1, x2, y2, it[4] == "1", (x1 to y1) in lit && (x2 to y2) in lit)
+            fun indexAt(x: Float, y: Float) = nodes.indexOfFirst { kotlin.math.abs(it.x - x) < 0.5f && kotlin.math.abs(it.y - y) < 0.5f }
+            val lines = LINES.split(';').map { it.split(',') }.mapNotNull {
+                val a = indexAt(it[0].toFloat(), it[1].toFloat())
+                val b = indexAt(it[2].toFloat(), it[3].toFloat())
+                if (a < 0 || b < 0) null else GraphLine(a, b, it[4] == "1", nodes[a].lit && nodes[b].lit)
             }
             return NetworkGraph(lines, nodes)
         }
