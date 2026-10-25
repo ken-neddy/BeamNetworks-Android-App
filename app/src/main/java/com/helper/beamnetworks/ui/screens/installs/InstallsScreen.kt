@@ -117,7 +117,8 @@ class InstallsViewModel(private val app: AppContainer) : ViewModel() {
             .filter { type == null || it.type == type }
             .filter { !mine || it.technicianId == session?.userId }
         val upcoming = filtered.filter { it.status.isUpcoming }.sortedBy { it.scheduled }
-        val completed = filtered.filter { it.status == JobStatus.Completed }.sortedByDescending { it.completedAt ?: it.scheduled }
+        // Cancelled jobs sit with completed ones (their tag says Cancelled) so they never vanish
+        val completed = filtered.filter { it.status == JobStatus.Completed || it.status == JobStatus.Cancelled }.sortedByDescending { it.completedAt ?: it.scheduled }
         JobsUi(
             segment = segment,
             type = type,
@@ -220,7 +221,7 @@ private fun JobCard(job: Job, onClick: () -> Unit, onMarkDone: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             WhenPill(whenLabel(job.scheduled))
             Spacer(Modifier.weight(1f))
-            if (job.high) Tag("High", Tones.Red, large = true)
+            if (job.priority == "high" || job.priority == "urgent") Tag(if (job.priority == "urgent") "Urgent" else "High", Tones.Red, large = true)
             Tag(tag, tone, large = true)
         }
         Column {

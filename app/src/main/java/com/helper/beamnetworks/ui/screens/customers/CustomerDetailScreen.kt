@@ -75,6 +75,7 @@ import com.helper.beamnetworks.ui.components.PillTabs
 import com.helper.beamnetworks.ui.components.PrimaryButton
 import com.helper.beamnetworks.ui.components.SecondaryButton
 import com.helper.beamnetworks.ui.components.SectionHeader
+import com.helper.beamnetworks.ui.components.SwitchRow
 import com.helper.beamnetworks.ui.components.Tag
 import com.helper.beamnetworks.ui.components.TwoColumns
 import com.helper.beamnetworks.ui.icons.BeamIcons
@@ -152,10 +153,28 @@ class CustomerDetailViewModel(private val app: AppContainer, handle: SavedStateH
         loadOverview()
     }
 
+    /** This customer's own confirmed payments (any date), newest first; null until loaded. */
+    var paymentHistory by mutableStateOf<List<Payment>?>(null)
+        private set
+
     fun loadOverview() {
         viewModelScope.launch {
             full = runCatching { apiCall { app.api.customer(id) } }.getOrNull()
             session = runCatching { apiCall { app.api.sessions(customer = id) } }.getOrNull()?.firstOrNull { it.status == "active" }
+            paymentHistory = runCatching { apiCall { app.api.paymentRecords(status = "confirmed", customerType = "pppoe", customer = id, pageSize = 25) }.results }
+                .getOrNull()
+                ?.map { p ->
+                    Payment(
+                        id = p.id,
+                        customerId = p.pppoeCustomer,
+                        customerName = p.customerName.orEmpty(),
+                        amount = parseMoney(p.amount),
+                        method = p.method.orEmpty(),
+                        reference = p.mpesaTransactionId?.ifBlank { null } ?: p.reference?.ifBlank { null },
+                        date = parseDateTime(p.confirmedAt) ?: parseDateTime(p.createdAt),
+                    )
+                }
+                ?.sortedByDescending { it.date }
         }
     }
 
@@ -209,6 +228,25 @@ class CustomerDetailViewModel(private val app: AppContainer, handle: SavedStateH
 
     fun resendPortal() = act("portal", "Portal login sent to the customer") { apiCall { app.api.resendPortalCredentials(id) } }
 
+    fun archive(customer: Customer) = act("archive", "${customer.name} archived") { app.customers.archive(customer) }
+
+    fun setStaticIp(enabled: Boolean, address: String, onDone: () -> Unit) = act("ip", if (enabled) "Static IP assigned" else "Static IP released") {
+        apiCall { app.api.setStaticIp(id, com.helper.beamnetworks.data.api.StaticIpRequest(enabled, address.trim().ifBlank { null }.takeIf { enabled })) }
+        refreshCustomer()
+        onDone()
+    }
+
+    /** [unit] is "days", "weeks" or "until" (then [until] is used). */
+    fun extendService(customer: Customer, unit: String, count: Int, until: LocalDate, reason: String, onDone: () -> Unit) = act("extend", "${customer.name}'s service extended") {
+        when (unit) {
+            "weeks" -> app.customers.extendService(customer, reason, weeks = count)
+            "until" -> app.customers.extendService(customer, reason, resumeAt = com.helper.beamnetworks.util.isoOffset(until, 23, 59))
+            else -> app.customers.extendService(customer, reason, days = count)
+        }
+        refreshCustomer()
+        onDone()
+    }
+
     fun update(body: CustomerUpdate, onDone: () -> Unit) = act("edit", "Details saved") {
         apiCall { app.api.updateCustomer(id, body) }
         refreshCustomer()
@@ -222,8 +260,8 @@ class CustomerDetailViewModel(private val app: AppContainer, handle: SavedStateH
         onDone()
     }
 
-    fun invoice(description: String, amount: Double, dueInDays: Int, onDone: () -> Unit) = act("invoice", "Invoice raised") {
-        apiCall { app.api.createInvoice(InvoiceCreate(id, listOf(NewLineItem(description.trim(), "1", moneyString(amount))), dueInDays)) }
+    fun invoice(description: String, amount: Double, quantity: Int, dueInDays: Int, onDone: () -> Unit) = act("invoice", "Invoice raised") {
+        apiCall { app.api.createInvoice(InvoiceCreate(id, listOf(NewLineItem(description.trim(), quantity.toString(), moneyString(amount))), dueInDays)) }
         refreshCustomer()
         loadTab(CustomerTab.Billing)
         onDone()
@@ -330,7 +368,7 @@ fun CustomerDetailScreen(onRecordPayment: (Int) -> Unit, onRestore: (Int) -> Uni
             item { Text(vm.tabError!!, style = BeamType.Small.copy(color = BeamColors.Danger), modifier = Modifier.padding(8.dp)) }
         }
         when (tab) {
-            CustomerTab.Overview -> overview(vm, customer, ui.payments, onRaiseTicket)
+            CustomerTab.Overview -> overview(vm, customer, vm.paymentHistory ?: ui.payments, onRaiseTicket)
             CustomerTab.Activity -> activityTab(vm.activity)
             CustomerTab.Billing -> billingTab(vm, context, onNewInvoice = { sheet = "invoice" }, onCredit = { sheet = "credit" })
             CustomerTab.Usage -> usageTab(vm.usage)
@@ -345,6 +383,15 @@ fun CustomerDetailScreen(onRecordPayment: (Int) -> Unit, onRestore: (Int) -> Uni
         "edit" -> EditSheet(vm, customer) { sheet = null }
         "credit" -> CreditSheet(vm) { sheet = null }
         "invoice" -> InvoiceSheet(vm) { sheet = null }
+        "extend" -> ExtendSheet(vm, customer) { sheet = null }
+        "ip" -> StaticIpSheet(vm) { sheet = null }
+        "archive" -> com.helper.beamnetworks.ui.screens.registers.ConfirmDialog(
+            "Archive ${customer.name}?",
+            "Their account is closed for good and they drop off the customer list. Use this only when a customer has left.",
+            "Archive",
+            onConfirm = { vm.archive(customer) },
+            onDismiss = { sheet = null },
+        )
     }
 }
 
@@ -631,6 +678,67 @@ private fun MoreSheet(vm: CustomerDetailViewModel, customer: Customer, onClose: 
             NavRow(BeamIcons.Banknote, Tones.Green, "Add credit", "Goodwill or outage credit", { open("credit") }, tileSize = 38.dp, inCard = true)
             BeamDivider()
             NavRow(BeamIcons.Ticket, Tones.Red, "New invoice", "One-off charge, e.g. router or relocation", { open("invoice") }, tileSize = 38.dp, inCard = true)
+            if (customer.status != CustomerStatus.Paused && customer.status != CustomerStatus.Archived) {
+                BeamDivider()
+                NavRow(BeamIcons.Clock, Tones.Blue, "Extend service", "Extra days or weeks, or until a date", { open("extend") }, tileSize = 38.dp, inCard = true)
+            }
+            BeamDivider()
+            NavRow(
+                BeamIcons.Link, Tones.Teal, "Static IP",
+                vm.full?.staticIp?.ifBlank { null }?.let { "Has $it" } ?: "Give this customer a fixed IP",
+                { open("ip") }, tileSize = 38.dp, inCard = true,
+            )
+            if (customer.status != CustomerStatus.Archived) {
+                BeamDivider()
+                NavRow(BeamIcons.Archive, Tones.Red, "Archive customer", "Customer has left; this can't be undone", { open("archive") }, tileSize = 38.dp, inCard = true)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExtendSheet(vm: CustomerDetailViewModel, customer: Customer, onClose: () -> Unit) {
+    val toast by vm.toasts.message.collectAsStateWithLifecycle()
+    val units = listOf("days" to "Days", "weeks" to "Weeks", "until" to "Until a date")
+    var unit by rememberSaveable { mutableStateOf("days") }
+    var count by rememberSaveable { mutableStateOf("7") }
+    var until by rememberSaveable { mutableStateOf(LocalDate.now().plusDays(7).toString()) }
+    var reason by rememberSaveable { mutableStateOf("") }
+    BeamSheet("Extend service", onClose, toast, ctaLabel = if (vm.busy == "extend") "Saving…" else "Extend", onCta = {
+        val n = count.toIntOrNull()
+        val date = runCatching { LocalDate.parse(until) }.getOrNull()
+        when {
+            reason.trim().length < 5 -> vm.toasts.show("Give a reason (at least 5 characters)")
+            unit == "days" && (n == null || n !in 1..90) -> vm.toasts.show("Days must be between 1 and 90")
+            unit == "weeks" && (n == null || n !in 1..52) -> vm.toasts.show("Weeks must be between 1 and 52")
+            unit == "until" && (date == null || !date.isAfter(LocalDate.now())) -> vm.toasts.show("Pick a date after today")
+            else -> vm.extendService(customer, unit, n ?: 0, date ?: LocalDate.now(), reason.trim(), onClose)
+        }
+    }, ctaEnabled = vm.busy == null) {
+        Text("Keeps the customer connected without a payment. They're suspended again when it ends unless they pay.", style = BeamType.Small.copy(color = BeamColors.TextSecondary))
+        PillTabs(options = units.map { PillTabOption(it.first, it.second) }, selected = unit, onSelect = { unit = it })
+        if (unit == "until") {
+            com.helper.beamnetworks.ui.components.DateField("Until", runCatching { LocalDate.parse(until) }.getOrDefault(LocalDate.now()), { until = it.toString() })
+        } else {
+            FormField(if (unit == "weeks") "Weeks" else "Days", count, { count = it.filter(Char::isDigit).take(2) }, keyboardType = KeyboardType.Number)
+        }
+        FormField("Reason", reason, { reason = it }, placeholder = "e.g. Promised to pay on Friday")
+    }
+}
+
+@Composable
+private fun StaticIpSheet(vm: CustomerDetailViewModel, onClose: () -> Unit) {
+    val toast by vm.toasts.message.collectAsStateWithLifecycle()
+    val current = vm.full?.staticIp?.ifBlank { null }
+    var address by rememberSaveable { mutableStateOf("") }
+    BeamSheet("Static IP", onClose, toast, ctaLabel = if (vm.busy == "ip") "Saving…" else if (current == null) "Assign static IP" else "Change IP", onCta = {
+        vm.setStaticIp(true, address, onClose)
+    }, ctaEnabled = vm.busy == null) {
+        Text(current?.let { "Currently $it." } ?: "No static IP yet.", style = BeamType.Body)
+        FormField("Address (optional)", address, { address = it.filter { c -> c.isDigit() || c == '.' } }, placeholder = "Leave blank to pick the next free one", keyboardType = KeyboardType.Decimal)
+        Text("The customer's session is updated; they may need to reconnect.", style = BeamType.Meta)
+        if (current != null) {
+            SecondaryButton(if (vm.busy == "ip") "…" else "Release static IP", { vm.setStaticIp(false, "", onClose) }, textColor = BeamColors.Danger, bold = true)
         }
     }
 }
@@ -663,22 +771,53 @@ private fun PauseSheet(vm: CustomerDetailViewModel, onClose: () -> Unit) {
 private fun EditSheet(vm: CustomerDetailViewModel, customer: Customer, onClose: () -> Unit) {
     val toast by vm.toasts.message.collectAsStateWithLifecycle()
     val f = vm.full
+    val loaded = f != null
     var name by rememberSaveable { mutableStateOf(customer.name) }
     var phone by rememberSaveable { mutableStateOf(customer.phone) }
     var email by rememberSaveable { mutableStateOf(customer.email.orEmpty()) }
-    var estate by rememberSaveable { mutableStateOf(f?.estate.orEmpty()) }
-    var building by rememberSaveable { mutableStateOf(f?.building.orEmpty()) }
-    var house by rememberSaveable { mutableStateOf(f?.houseNumber.orEmpty()) }
-    var landmark by rememberSaveable { mutableStateOf(f?.commonMarker.orEmpty()) }
+    // Location and billing are seeded from the full record, so they re-seed once it has loaded
+    var billed by rememberSaveable(loaded) { mutableStateOf(f?.isBilled ?: true) }
+    var country by rememberSaveable(loaded) { mutableStateOf(f?.country.orEmpty()) }
+    var county by rememberSaveable(loaded) { mutableStateOf(f?.city.orEmpty()) }
+    var subCounty by rememberSaveable(loaded) { mutableStateOf(f?.subCounty.orEmpty()) }
+    var ward by rememberSaveable(loaded) { mutableStateOf(f?.ward.orEmpty()) }
+    var road by rememberSaveable(loaded) { mutableStateOf(f?.road.orEmpty()) }
+    var estate by rememberSaveable(loaded) { mutableStateOf(f?.estate.orEmpty()) }
+    var street by rememberSaveable(loaded) { mutableStateOf(f?.street.orEmpty()) }
+    var building by rememberSaveable(loaded) { mutableStateOf(f?.building.orEmpty()) }
+    var house by rememberSaveable(loaded) { mutableStateOf(f?.houseNumber.orEmpty()) }
+    var landmark by rememberSaveable(loaded) { mutableStateOf(f?.commonMarker.orEmpty()) }
+    var details by rememberSaveable(loaded) { mutableStateOf(f?.moreDetails.orEmpty()) }
     BeamSheet("Edit details", onClose, toast, ctaLabel = if (vm.busy == "edit") "Saving…" else "Save", onCta = {
         if (name.isBlank() || phone.isBlank()) vm.toasts.show("Name and phone are required")
-        else vm.update(CustomerUpdate(fullName = name.trim(), phone = phone.trim(), email = email.trim(), estate = estate.trim(), building = building.trim(), houseNumber = house.trim(), commonMarker = landmark.trim()), onClose)
+        // Location and billing are only sent once the full record has loaded, so blanks never overwrite real values
+        else if (f == null) vm.update(CustomerUpdate(fullName = name.trim(), phone = phone.trim(), email = email.trim()), onClose)
+        else vm.update(
+            CustomerUpdate(
+                fullName = name.trim(), phone = phone.trim(), email = email.trim(),
+                country = country.trim(), city = county.trim(), subCounty = subCounty.trim(), ward = ward.trim(),
+                road = road.trim(), estate = estate.trim(), street = street.trim(), building = building.trim(),
+                houseNumber = house.trim(), commonMarker = landmark.trim(), moreDetails = details.trim(),
+                isBilled = billed,
+            ),
+            onClose,
+        )
     }, ctaEnabled = vm.busy == null) {
         FormField("Full name", name, { name = it })
         FormField("Phone", phone, { phone = it }, keyboardType = KeyboardType.Phone)
         FormField("Email", email, { email = it }, keyboardType = KeyboardType.Email)
-        TwoColumns({ FormField("Estate", estate, { estate = it }) }, { FormField("Building", building, { building = it }) })
-        TwoColumns({ FormField("House no.", house, { house = it }) }, { FormField("Landmark", landmark, { landmark = it }) })
+        if (f != null) {
+            SwitchRow("Billed account", billed) { billed = it }
+            Text("Location", style = BeamType.SectionTitle, modifier = Modifier.padding(top = 6.dp))
+            TwoColumns({ FormField("Country", country, { country = it }) }, { FormField("County", county, { county = it }) })
+            TwoColumns({ FormField("Sub-county", subCounty, { subCounty = it }) }, { FormField("Ward", ward, { ward = it }) })
+            TwoColumns({ FormField("Road", road, { road = it }) }, { FormField("Estate", estate, { estate = it }) })
+            TwoColumns({ FormField("Street", street, { street = it }) }, { FormField("Building", building, { building = it }) })
+            TwoColumns({ FormField("House / unit no.", house, { house = it }) }, { FormField("Another common marker", landmark, { landmark = it }) })
+            FormField("More details", details, { details = it }, singleLine = false)
+        } else {
+            Text("Location and billing details couldn't be loaded, so they're left unchanged.", style = BeamType.Meta)
+        }
     }
 }
 
@@ -706,17 +845,22 @@ private fun InvoiceSheet(vm: CustomerDetailViewModel, onClose: () -> Unit) {
     val toast by vm.toasts.message.collectAsStateWithLifecycle()
     var description by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
+    var quantity by rememberSaveable { mutableStateOf("1") }
     var due by rememberSaveable { mutableStateOf("7 days") }
     BeamSheet("New invoice", onClose, toast, ctaLabel = if (vm.busy == "invoice") "Raising…" else "Raise invoice", onCta = {
         val a = parseAmountInput(amount)
         when {
             description.isBlank() -> vm.toasts.show("Describe the charge")
             a == null -> vm.toasts.show("Enter an amount")
-            else -> vm.invoice(description, a, due.substringBefore(' ').toInt(), onClose)
+            (quantity.toIntOrNull() ?: 0) < 1 -> vm.toasts.show("Quantity must be at least 1")
+            else -> vm.invoice(description, a, quantity.toInt(), due.substringBefore(' ').toInt(), onClose)
         }
     }, ctaEnabled = vm.busy == null) {
         FormField("What for", description, { description = it }, placeholder = "e.g. Router installation")
-        FormField("Amount (Ksh)", amount, { amount = it }, keyboardType = KeyboardType.Decimal, large = true, placeholder = "0.00")
+        TwoColumns(
+            { FormField("Price each (Ksh)", amount, { amount = it }, keyboardType = KeyboardType.Decimal, placeholder = "0.00") },
+            { FormField("Quantity", quantity, { quantity = it.filter(Char::isDigit).take(3) }, keyboardType = KeyboardType.Number) },
+        )
         DropdownField("Due in", due, listOf("0 days", "3 days", "7 days", "14 days", "30 days"), { due = it })
     }
 }

@@ -76,6 +76,26 @@ import com.helper.beamnetworks.ui.sheets.SheetHost
 import com.helper.beamnetworks.ui.sheets.SheetType
 import com.helper.beamnetworks.ui.sheets.SheetViewModel
 import com.helper.beamnetworks.ui.theme.BeamColors
+import com.helper.beamnetworks.ui.theme.Tones
+import com.helper.beamnetworks.ui.icons.BeamIcons
+import com.helper.beamnetworks.ui.components.MenuDrawer
+import com.helper.beamnetworks.ui.components.MenuItem
+import com.helper.beamnetworks.ui.components.MenuSection
+import com.helper.beamnetworks.ui.screens.account.LIPWA_LINK
+import com.helper.beamnetworks.ui.screens.registers.HotspotRoute
+import com.helper.beamnetworks.ui.screens.registers.HotspotScreen
+import com.helper.beamnetworks.ui.screens.registers.InvoicesRoute
+import com.helper.beamnetworks.ui.screens.registers.InvoicesScreen
+import com.helper.beamnetworks.ui.screens.registers.PaymentsRoute
+import com.helper.beamnetworks.ui.screens.registers.PaymentsScreen
+import com.helper.beamnetworks.ui.screens.registers.SettingsRoute
+import com.helper.beamnetworks.ui.screens.registers.SettingsScreen
+import com.helper.beamnetworks.ui.screens.registers.SmsLogRoute
+import com.helper.beamnetworks.ui.screens.registers.SmsLogScreen
+import android.content.Intent
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.rememberDrawerState
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -109,10 +129,75 @@ private fun BeamShell(app: AppContainer) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
     val isPicker = destination.isAny(CallLogRoute::class, MapRoute::class, MessagePickerRoute::class)
-    val isSub = destination.isAny(
-        CustomerDetailRoute::class, InstallDetailRoute::class, StockRoute::class, AccountsRoute::class,
-        NotificationsRoute::class, NotificationSettingsRoute::class, NetworkRoute::class, TicketDetailRoute::class,
-        SessionsRoute::class, CustomerMapRoute::class, AnnouncementsRoute::class,
+    // Detail screens get a back button; everything reachable from the menu gets the menu button
+    val isSub = destination.isAny(CustomerDetailRoute::class, InstallDetailRoute::class, TicketDetailRoute::class, NotificationSettingsRoute::class)
+    val drawer = rememberDrawerState(DrawerValue.Closed)
+    val context = LocalContext.current
+    val session by app.sessions.session.collectAsStateWithLifecycle()
+    val stock by app.inventory.items.state.collectAsStateWithLifecycle()
+    val tickets by app.tickets.tickets.state.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        app.inventory.items.ensureLoaded()
+        app.tickets.tickets.ensureLoaded()
+    }
+    // Back closes the menu first
+    androidx.activity.compose.BackHandler(enabled = drawer.isOpen) { scope.launch { drawer.close() } }
+
+    fun menuGo(route: Any, tab: Boolean = false) {
+        scope.launch { drawer.close() }
+        if (tab) nav.goToTab(route, restore = false) else nav.navigate(route) {
+            popUpTo(HomeRoute)
+            launchSingleTop = true
+        }
+    }
+    val lowStock = stock.items.count { it.isLow }
+    val openTickets = tickets.items.count { it.status.isOpen }
+    val sections = listOf(
+        MenuSection(null, listOf(
+            MenuItem(BeamIcons.LayoutGrid, Tones.Blue, "Dashboard", destination.isAny(HomeRoute::class)) { menuGo(HomeRoute, tab = true) },
+            MenuItem(BeamIcons.Users, Tones.Green, "Customers (PPPoE)", destination.isAny(CustomersRoute::class)) { menuGo(CustomersRoute(), tab = true) },
+            MenuItem(BeamIcons.Wifi, Tones.Teal, "Hotspot & vouchers", destination.isAny(HotspotRoute::class)) { menuGo(HotspotRoute) },
+            MenuItem(BeamIcons.Wrench, Tones.Orange, "Jobs", destination.isAny(InstallsRoute::class)) { menuGo(InstallsRoute(), tab = true) },
+            MenuItem(
+                BeamIcons.Ticket, Tones.Red, "Tickets", destination.isAny(TicketsRoute::class),
+                badge = openTickets.takeIf { it > 0 }?.let { "$it open" }, badgeTone = Tones.Red,
+            ) { menuGo(TicketsRoute(), tab = true) },
+        )),
+        MenuSection("Money", listOf(
+            MenuItem(BeamIcons.CreditCard, Tones.Green, "Payments", destination.isAny(PaymentsRoute::class)) { menuGo(PaymentsRoute) },
+            MenuItem(BeamIcons.FileText, Tones.Blue, "Invoices", destination.isAny(InvoicesRoute::class)) { menuGo(InvoicesRoute) },
+            MenuItem(BeamIcons.Banknote, Tones.Purple, "Income & expenses", destination.isAny(AccountsRoute::class)) { menuGo(AccountsRoute) },
+            MenuItem(BeamIcons.Link, Tones.Orange, "Share Lipwa link") {
+                scope.launch { drawer.close() }
+                val share = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "Pay for your Beam Networks internet here: $LIPWA_LINK")
+                context.startActivity(Intent.createChooser(share, "Share payment link"))
+            },
+        )),
+        MenuSection("Network", listOf(
+            MenuItem(BeamIcons.Activity, Tones.Red, "Network status", destination.isAny(NetworkRoute::class)) { menuGo(NetworkRoute) },
+            MenuItem(BeamIcons.Activity, Tones.Purple, "Live PPPoE sessions", destination.isAny(SessionsRoute::class)) { menuGo(SessionsRoute) },
+            MenuItem(BeamIcons.MapPin, Tones.Blue, "Customer map", destination.isAny(CustomerMapRoute::class)) { menuGo(CustomerMapRoute) },
+        )),
+        MenuSection("Messages", listOf(
+            MenuItem(BeamIcons.Send, Tones.Purple, "Announcements", destination.isAny(AnnouncementsRoute::class)) { menuGo(AnnouncementsRoute) },
+            MenuItem(BeamIcons.MessageSquare, Tones.Teal, "SMS & email log", destination.isAny(SmsLogRoute::class)) { menuGo(SmsLogRoute) },
+            MenuItem(BeamIcons.MessageSquare, Tones.Green, "M‑Pesa messages") { menuGo(MessagePickerRoute) },
+            MenuItem(BeamIcons.Phone, Tones.Teal, "Call log") { menuGo(CallLogRoute) },
+        )),
+        MenuSection("Stock & tools", listOf(
+            MenuItem(
+                BeamIcons.Package, Tones.Blue, "Stock", destination.isAny(StockRoute::class),
+                badge = lowStock.takeIf { it > 0 }?.let { "$it low" }, badgeTone = Tones.Orange,
+            ) { menuGo(StockRoute) },
+            MenuItem(BeamIcons.MapPin, Tones.Red, "Map") { menuGo(MapRoute) },
+        )),
+        MenuSection("Account", listOf(
+            MenuItem(BeamIcons.Settings, Tones.Neutral, "Settings", destination.isAny(SettingsRoute::class)) { menuGo(SettingsRoute) },
+            MenuItem(BeamIcons.LogOut, Tones.Red, "Sign out", danger = true) {
+                scope.launch { drawer.close() }
+                app.logout()
+            },
+        )),
     )
     val tab = when {
         destination.isAny(HomeRoute::class) -> BottomTab.Home
@@ -154,6 +239,18 @@ private fun BeamShell(app: AppContainer) {
         sheets.resumeAfterPicker(results)
     }
 
+    ModalNavigationDrawer(
+        drawerState = drawer,
+        gesturesEnabled = drawer.isOpen,
+        scrimColor = BeamColors.Scrim,
+        drawerContent = {
+            MenuDrawer(
+                tenant = session?.tenantName ?: "Beam Networks",
+                subtitle = listOfNotNull(session?.email, if (session?.isAdmin == true) "Admin" else "Staff").joinToString(" · "),
+                sections = sections,
+            )
+        },
+    ) {
     Column(Modifier.fillMaxSize().background(BeamColors.Background)) {
         if (!isPicker) {
             BeamTopBar(
@@ -161,6 +258,7 @@ private fun BeamShell(app: AppContainer) {
                 showBack = isSub,
                 showAlertDot = hasUnread,
                 onBack = { nav.popBackStack() },
+                onMenu = { scope.launch { drawer.open() } },
                 onBell = { nav.navigate(NotificationsRoute) { launchSingleTop = true } },
                 onAccount = { nav.goToTab(AccountRoute) },
             )
@@ -245,6 +343,16 @@ private fun BeamShell(app: AppContainer) {
                     AnnouncementsScreen()
                 }
                 composable<AccountsRoute> { AccountsScreen { sheets.open(SheetType.Expense(it)) } }
+                composable<PaymentsRoute> { PaymentsScreen { nav.navigate(CustomerDetailRoute(it)) } }
+                composable<InvoicesRoute> { InvoicesScreen { nav.navigate(CustomerDetailRoute(it)) } }
+                composable<HotspotRoute> { HotspotScreen() }
+                composable<SmsLogRoute> { SmsLogScreen(onSettings = { nav.navigate(SettingsRoute) { launchSingleTop = true } }) }
+                composable<SettingsRoute> {
+                    SettingsScreen(
+                        onAppNotifications = { nav.navigate(NotificationSettingsRoute) },
+                        onSmsLog = { nav.navigate(SmsLogRoute) { launchSingleTop = true } },
+                    )
+                }
                 composable<CallLogRoute> { CallLogScreen(nav) }
                 composable<MapRoute> { MapScreen(nav) }
                 composable<MessagePickerRoute> { MessagePickerScreen(nav) }
@@ -267,6 +375,7 @@ private fun BeamShell(app: AppContainer) {
                 onCreate = sheets::openCreateMenu,
             )
         }
+    }
     }
 
     SheetHost(sheets, onDeleteExpense = { id ->
@@ -301,6 +410,11 @@ private fun titleFor(destination: NavDestination?): String = when {
     destination.isAny(SessionsRoute::class) -> "Live sessions"
     destination.isAny(CustomerMapRoute::class) -> "Customer map"
     destination.isAny(AnnouncementsRoute::class) -> "Announcements"
+    destination.isAny(PaymentsRoute::class) -> "Payments"
+    destination.isAny(InvoicesRoute::class) -> "Invoices"
+    destination.isAny(HotspotRoute::class) -> "Hotspot"
+    destination.isAny(SmsLogRoute::class) -> "SMS & email log"
+    destination.isAny(SettingsRoute::class) -> "Settings"
     else -> ""
 }
 

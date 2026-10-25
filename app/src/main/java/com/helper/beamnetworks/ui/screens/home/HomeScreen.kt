@@ -205,7 +205,7 @@ fun HomeScreen(
             item { HeroCard(ui, onAccounts) }
             item {
                 Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatCard(ui.customers, "Customers", Modifier.weight(1f)) { onCustomers(null) }
+                    StatCard(ui.customers, "Customers", Modifier.weight(1f)) { onCustomers("all") }
                     StatCard(ui.online, "Online now", Modifier.weight(1f)) { onCustomers("online") }
                     StatCard(ui.openTickets, "Open tickets", Modifier.weight(1f), onTickets)
                 }

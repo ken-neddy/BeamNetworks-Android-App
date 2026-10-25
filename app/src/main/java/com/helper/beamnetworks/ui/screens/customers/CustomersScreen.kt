@@ -48,14 +48,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 enum class CustomerFilter(val key: String, val label: String, val test: (Customer) -> Boolean) {
+    Online("online", "Online", { it.online }),
     All("all", "All", { true }),
     Active("active", "Active", { it.status == CustomerStatus.Active }),
     Suspended("suspended", "Suspended", { it.status == CustomerStatus.Suspended }),
-    Owing("owing", "Owing", { it.owing }),
-    Online("online", "Online", { it.online });
+    Owing("owing", "Owing", { it.owing });
 
     companion object {
-        fun from(key: String?) = entries.firstOrNull { it.key == key } ?: All
+        fun from(key: String?) = entries.firstOrNull { it.key == key } ?: Online
     }
 }
 
@@ -67,7 +67,7 @@ fun CustomerStatus.tone(): TonePair = when (this) {
 }
 
 data class CustomersUi(
-    val filter: CustomerFilter = CustomerFilter.All,
+    val filter: CustomerFilter = CustomerFilter.Online,
     val query: String = "",
     val counts: Map<CustomerFilter, Int> = emptyMap(),
     val list: List<Customer> = emptyList(),

@@ -1,6 +1,7 @@
 package com.helper.beamnetworks.data
 
 import com.helper.beamnetworks.data.api.AdjustRequest
+import com.helper.beamnetworks.data.api.AssignReceiptRequest
 import com.helper.beamnetworks.data.api.ApiException
 import com.helper.beamnetworks.data.api.BeamApi
 import com.helper.beamnetworks.data.api.CashPaymentRequest
@@ -12,7 +13,9 @@ import com.helper.beamnetworks.data.api.InventoryItemDto
 import com.helper.beamnetworks.data.api.InventoryUpdate
 import com.helper.beamnetworks.data.api.InventoryUse
 import com.helper.beamnetworks.data.api.JobAssign
-import com.helper.beamnetworks.data.api.JobComplete
+import com.helper.beamnetworks.data.api.JobCompleteFull
+import com.helper.beamnetworks.data.api.InventoryMoveRequest
+import com.helper.beamnetworks.data.api.ExtendServiceRequest
 import com.helper.beamnetworks.data.api.JobCreate
 import com.helper.beamnetworks.data.api.JobDto
 import com.helper.beamnetworks.data.api.PaymentDto
@@ -57,8 +60,8 @@ class CustomerRepository(private val api: BeamApi, scope: CoroutineScope) {
 
     fun byId(id: Int): Customer? = customers.items.firstOrNull { it.id == id }
 
-    suspend fun create(name: String, phone: String, email: String?, planId: Int, networkId: Int): Customer {
-        val dto = apiCall { api.createCustomer(CustomerCreate(name, phone, planId, networkId, email?.takeIf { it.isNotBlank() })) }
+    suspend fun create(request: CustomerCreate): Customer {
+        val dto = apiCall { api.createCustomer(request) }
         val customer = dto.toCustomer(online = false, identityId = null)
         customers.update { (listOf(customer) + it).sortedBy { c -> c.name.lowercase() } }
         // The server links an identity on create; reload in the background to pick it up
@@ -71,6 +74,17 @@ class CustomerRepository(private val api: BeamApi, scope: CoroutineScope) {
     suspend fun reactivate(customer: Customer) = replace(customer) { api.reactivateCustomer(customer.id) }
 
     suspend fun extend(customer: Customer, days: Int, reason: String) = replace(customer) { api.extendCustomer(customer.id, ExtendRequest(reason, days)) }
+
+    /** Extends by [weeks]/[days], or until [resumeAt] (ISO datetime) when given. */
+    suspend fun extendService(customer: Customer, reason: String, weeks: Int? = null, days: Int? = null, resumeAt: String? = null) = replace(customer) {
+        api.extendService(customer.id, if (resumeAt != null) ExtendServiceRequest(reason, resumeAt = resumeAt) else ExtendServiceRequest(reason, weeks, days))
+    }
+
+    /** Archiving is terminal, so the customer is dropped from the list. */
+    suspend fun archive(customer: Customer) {
+        apiCall { api.archiveCustomer(customer.id) }
+        customers.update { list -> list.filterNot { it.id == customer.id } }
+    }
 
     suspend fun sendPayLink(customer: Customer) {
         apiCall { api.sendPayLink(customer.id) }
@@ -135,7 +149,11 @@ class PaymentRepository(private val api: BeamApi, scope: CoroutineScope) {
             }
         }
             .filter { it.status != "cancelled" && it.status != "waived" }
-            .map { Invoice(it.id, it.customer, parseMoney(it.total), (parseDateTime(it.periodStart) ?: parseDateTime(it.createdAt))?.toLocalDate()) }
+            .map { inv ->
+                // Billed = subtotal + tax (matches the web's "billed_net"); total is net of credit
+                val billed = inv.subtotal?.let { parseMoney(it) + parseMoney(inv.taxAmount) } ?: parseMoney(inv.total)
+                Invoice(inv.id, inv.customer, billed, (parseDateTime(inv.periodStart) ?: parseDateTime(inv.createdAt))?.toLocalDate())
+            }
             .filter { (it.date ?: LocalDate.MIN) >= cutoff }
     }
 
@@ -150,6 +168,24 @@ class PaymentRepository(private val api: BeamApi, scope: CoroutineScope) {
     }
 
     suspend fun recordCash(customer: Customer, amount: Double, reference: String?): Payment {
+        val code = reference?.trim()?.uppercase()?.takeIf { it.isNotBlank() }
+        if (code != null) {
+            // A paybill payment is credited by Beam itself; recording it again would double-credit
+            val existing = apiCall { api.paymentRecords(search = code, pageSize = 10) }.results
+                .firstOrNull { it.mpesaTransactionId.equals(code, ignoreCase = true) && it.status != "failed" }
+            if (existing != null) {
+                throw ApiException("M‑Pesa $code is already in Beam (${existing.customerName?.ifBlank { null } ?: "another customer"}, Ksh ${existing.amount}). Not recorded again.")
+            }
+            // Paid to the paybill with a wrong account number: attach that deposit instead
+            val receipt = runCatching { apiCall { api.findReceipts(code) }.results }.getOrNull()
+                ?.firstOrNull { it.transId.equals(code, ignoreCase = true) }
+            if (receipt != null) {
+                apiCall { api.assignReceipt(receipt.id, AssignReceiptRequest(customerId = customer.id)) }
+                val payment = Payment(receipt.id, customer.id, customer.name, parseMoney(receipt.amount), "mpesa", code, java.time.ZonedDateTime.now(zone))
+                payments.refreshAsync()
+                return payment
+            }
+        }
         val note = buildString {
             append("Recorded in Beam app")
             if (!reference.isNullOrBlank()) append(" · M-Pesa ").append(reference)
@@ -191,10 +227,10 @@ class TicketRepository(private val api: BeamApi, scope: CoroutineScope) {
         apiCall { fetchAllPages(maxPages = 5) { api.tickets(it) } }.map { it.toTicket() }.sortedByDescending { it.created }
     }
 
-    suspend fun raise(issue: String, high: Boolean, identityId: Int?, customerName: String): Ticket {
+    suspend fun raise(issue: String, priority: String, queue: String?, assignee: Int?, identityId: Int?, customerName: String): Ticket {
         val subject = issue.lineSequence().first().take(120)
         val description = if (identityId == null && customerName.isNotBlank()) "$issue\n\nCustomer: $customerName" else issue
-        val dto = apiCall { api.createTicket(TicketCreate(subject, description, if (high) "high" else "medium", identityId)) }
+        val dto = apiCall { api.createTicket(TicketCreate(subject, description, priority, queue, assignee, identityId)) }
         val ticket = dto.toTicket().let { if (it.customerName.isBlank()) it.copy(customerName = customerName) else it }
         tickets.update { listOf(ticket) + it }
         return ticket
@@ -215,6 +251,8 @@ class TicketRepository(private val api: BeamApi, scope: CoroutineScope) {
         customerName = customerName?.takeIf { it.isNotBlank() }
             ?: description.lineSequence().firstOrNull { it.startsWith("Customer: ") }?.removePrefix("Customer: ").orEmpty(),
         created = parseDateTime(createdAt),
+        slaStatus = slaStatus,
+        priority = priority,
     )
 }
 
@@ -230,6 +268,7 @@ data class JobDraft(
     val time: LocalTime,
     val technicianId: Int?,
     val type: JobType = JobType.Installation,
+    val priority: String = "medium",
 )
 
 class JobRepository(private val api: BeamApi, scope: CoroutineScope) {
@@ -252,6 +291,7 @@ class JobRepository(private val api: BeamApi, scope: CoroutineScope) {
             scheduledFor = scheduledFor,
             customerIdentity = draft.identityId,
             jobType = draft.type.key,
+            priority = draft.priority,
         )
         var dto = apiCall { if (id == null) api.createJob(body) else api.updateJob(id, body) }
         if (draft.technicianId != null && draft.technicianId != dto.assignedTo) {
@@ -276,10 +316,19 @@ class JobRepository(private val api: BeamApi, scope: CoroutineScope) {
     }
 
     /** Completion only works from in_progress (API.md §16), so check in first when needed. */
-    suspend fun complete(job: Job, used: Map<Int, Int>) {
+    suspend fun complete(job: Job, used: Map<Int, Int>, code: String = "", confirmed: Boolean = false, technicianNotes: String = "") {
         if (job.status != JobStatus.InProgress) apiCall { api.checkInJob(job.id) }
         val dto = apiCall {
-            api.completeJob(job.id, JobComplete("Marked done in Beam app", used.filterValues { it > 0 }.map { (item, qty) -> InventoryUse(item, qty) }))
+            api.completeJobFull(
+                job.id,
+                JobCompleteFull(
+                    completionNotes = "Marked done in Beam app",
+                    technicianNotes = technicianNotes.trim().ifBlank { null },
+                    completionCode = code.trim().ifBlank { null },
+                    customerConfirmed = confirmed,
+                    inventoryUsed = used.filterValues { it > 0 }.map { (item, qty) -> InventoryUse(item, qty) },
+                ),
+            )
         }
         jobs.update { list -> list.map { if (it.id == job.id) dto.toJob() else it } }
     }
@@ -287,14 +336,18 @@ class JobRepository(private val api: BeamApi, scope: CoroutineScope) {
     private fun JobDto.toJob(): Job {
         val lines = description.orEmpty().lines()
         fun field(prefix: String) = lines.firstOrNull { it.startsWith(prefix) }?.removePrefix(prefix)?.trim()
-        val location = lines.firstOrNull { line -> line.isNotBlank() && PREFIXES.none { line.startsWith(it) } }.orEmpty()
+        // Jobs made in the app always carry a "Router:" line; anything else (web, escalated tickets)
+        // has a plain description, which is the job's notes rather than a location
+        val appFormat = lines.any { it.startsWith(ROUTER) }
+        val location = if (appFormat) lines.firstOrNull { line -> line.isNotBlank() && PREFIXES.none { line.startsWith(it) } }.orEmpty() else ""
+        val notes = if (appFormat) field(NOTES).orEmpty() else description.orEmpty().trim()
         return Job(
             id = id,
             customerName = customerName?.takeIf { it.isNotBlank() } ?: title,
             identityId = customerIdentity,
             phone = customerPhone?.takeIf { it.isNotBlank() } ?: field(PHONE),
             location = location,
-            notes = field(NOTES).orEmpty(),
+            notes = notes,
             hasRouter = field(ROUTER) == "yes",
             scheduled = parseDateTime(scheduledFor),
             status = JobStatus.from(status),
@@ -305,6 +358,7 @@ class JobRepository(private val api: BeamApi, scope: CoroutineScope) {
             high = priority == "high" || priority == "urgent",
             checkedInAt = parseDateTime(checkInAt),
             sourceTicket = sourceTicketSubject?.takeIf { it.isNotBlank() },
+            priority = priority ?: "medium",
         )
     }
 
@@ -327,14 +381,14 @@ class InventoryRepository(private val api: BeamApi, scope: CoroutineScope) {
     val items = RemoteList(scope) { apiCall { fetchAllPages { api.inventory(it) } }.map { it.toItem() }.sortedBy { it.name.lowercase() } }
 
     /** Adds a product, or adds [quantity] to an existing one with the same name. */
-    suspend fun addOrRestock(name: String, quantity: Int, reorderAt: Int): StockItem {
+    suspend fun addOrRestock(name: String, quantity: Int, reorderAt: Int, itemType: String = "consumable", sku: String? = null, unitCost: Double? = null, unitPrice: Double? = null): StockItem {
         val existing = items.items.firstOrNull { it.name.equals(name.trim(), ignoreCase = true) }
         val dto = if (existing != null) {
             var updated = if (quantity != 0) apiCall { api.adjustItem(existing.id, AdjustRequest(quantity, "Restocked in Beam app")) } else null
             if (reorderAt != existing.reorderAt) updated = apiCall { api.updateItem(existing.id, InventoryUpdate(reorderAt)) }
             updated ?: return existing
         } else {
-            apiCall { api.createItem(InventoryCreate(name.trim(), skuFor(name), quantity = quantity, reorderThreshold = reorderAt)) }
+            apiCall { api.createItem(InventoryCreate(name.trim(), sku?.trim()?.takeIf { it.isNotEmpty() } ?: skuFor(name), itemType = itemType, unitCost = unitCost?.let { moneyString(it) }, unitPrice = unitPrice?.let { moneyString(it) }, quantity = quantity, reorderThreshold = reorderAt)) }
         }
         val item = dto.toItem()
         items.update { list -> (list.filterNot { it.id == item.id } + item).sortedBy { it.name.lowercase() } }
@@ -362,7 +416,20 @@ class InventoryRepository(private val api: BeamApi, scope: CoroutineScope) {
         }
     }
 
-    private fun InventoryItemDto.toItem() = StockItem(id, name, quantity, reorderThreshold)
+    /** A stock movement (issue to a technician, receive, return…); the server updates the quantity. */
+    suspend fun move(item: StockItem, type: String, quantity: Int, staffUserId: Int?, notes: String?) {
+        val updated = apiCall { api.moveItem(item.id, InventoryMoveRequest(type, quantity, assignedToUser = staffUserId, notes = notes?.ifBlank { null })) }.toItem()
+        items.update { list -> list.map { if (it.id == item.id) updated else it } }
+    }
+
+    /** Archives (soft-deletes) the product; its movement history is kept. */
+    suspend fun archive(item: StockItem) {
+        val response = apiCall { api.archiveItem(item.id) }
+        if (!response.isSuccessful) throw ApiException("Couldn't archive ${item.name} (error ${response.code()})", response.code())
+        items.update { list -> list.filterNot { it.id == item.id } }
+    }
+
+    private fun InventoryItemDto.toItem() = StockItem(id, name, quantity, reorderThreshold, itemType)
 
     private fun skuFor(name: String): String {
         val base = name.uppercase().filter { it.isLetterOrDigit() }.take(10).ifEmpty { "ITEM" }

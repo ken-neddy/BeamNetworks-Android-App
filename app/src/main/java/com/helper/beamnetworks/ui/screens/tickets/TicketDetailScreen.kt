@@ -84,6 +84,16 @@ fun statusTone(status: String): Pair<String, TonePair> = when (status) {
     else -> "Open" to Tones.Orange
 }
 
+/** SLA warning tag for open tickets: past due, or close to it. Null when on track. */
+fun slaTag(slaStatus: String?): Pair<String, TonePair>? = when {
+    slaStatus == null -> null
+    slaStatus.contains("breach", true) -> "Past SLA" to Tones.Red
+    slaStatus.contains("risk", true) || slaStatus.contains("warn", true) || slaStatus.contains("soon", true) -> "SLA soon" to Tones.Orange
+    else -> null
+}
+
+val TicketQueues = listOf("general" to "General", "technical" to "Technical", "billing" to "Billing", "field" to "Field", "network" to "Network")
+
 fun priorityTone(priority: String): Pair<String, TonePair> = when (priority) {
     "urgent" -> "Urgent" to Tones.Red
     "high" -> "High" to Tones.Red
@@ -131,8 +141,12 @@ class TicketDetailViewModel(private val app: AppContainer, handle: SavedStateHan
     fun close() = act("status", "Ticket closed") { apiCall { app.api.closeTicket(id) } }
     fun reopen() = act("status", "Ticket reopened") { apiCall { app.api.reopenTicket(id) } }
 
-    fun assign(assignee: Int?, priority: String, onDone: () -> Unit) = act("assign", "Ticket updated") {
-        apiCall { app.api.assignTicket(id, TicketAssignRequest(assignee = assignee, priority = priority)) }.also { onDone() }
+    fun assign(assignee: Int?, priority: String, queue: String?, onDone: () -> Unit) = act("assign", "Ticket updated") {
+        apiCall { app.api.routeTicket(id, com.helper.beamnetworks.data.api.TicketQueueRequest(assignee = assignee, priority = priority, queue = queue)) }.also { onDone() }
+    }
+
+    fun escalate(note: String, assignee: Int?, queue: String?, onDone: () -> Unit) = act("escalate", "Ticket escalated") {
+        apiCall { app.api.escalateTicket(id, com.helper.beamnetworks.data.api.TicketEscalateRequest(note.trim().ifBlank { null }, assignee, queue)) }.also { onDone() }
     }
 
     fun makeJob(type: JobType, technician: Int?, date: LocalDate, time: LocalTime, onDone: () -> Unit) = act("job", "Field job created") {
@@ -186,7 +200,10 @@ fun TicketDetailScreen() {
                     }
                     Text(t.subject, style = BeamType.DetailName)
                     Text(t.description, style = BeamType.Body.copy(lineHeight = 1.45.em, color = BeamColors.TextSecondary))
-                    if (t.slaStatus?.contains("breach", true) == true) Tag("Past SLA", Tones.Red)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (open) slaTag(t.slaStatus)?.let { (label, tone) -> Tag(label, tone) }
+                        if (t.escalationLevel > 0) Tag("Escalated ×${t.escalationLevel}", Tones.Purple)
+                    }
                 }
             }
             item {
@@ -225,6 +242,9 @@ fun TicketDetailScreen() {
                     },
                     Modifier.padding(top = 8.dp),
                 )
+            }
+            if (open) {
+                item { SecondaryButton("Escalate", { sheet = "escalate" }, Modifier.padding(top = 8.dp), textColor = BeamColors.Purple, bold = true) }
             }
             item { SectionHeader("Conversation") { Text("${t.comments.size}", style = BeamType.Meta) } }
             if (t.comments.isEmpty()) {
@@ -297,6 +317,27 @@ fun TicketDetailScreen() {
     when (sheet) {
         "assign" -> AssignSheet(vm, t) { sheet = null }
         "job" -> MakeJobSheet(vm, t) { sheet = null }
+        "escalate" -> EscalateSheet(vm, t) { sheet = null }
+    }
+}
+
+@Composable
+private fun EscalateSheet(vm: TicketDetailViewModel, t: TicketDetailDto, onClose: () -> Unit) {
+    val staff by vm.staff.collectAsStateWithLifecycle()
+    val toast by vm.toasts.message.collectAsStateWithLifecycle()
+    var note by rememberSaveable { mutableStateOf("") }
+    var assignee by rememberSaveable { mutableStateOf(t.assignee) }
+    var queue by rememberSaveable { mutableStateOf(t.queue) }
+    BeamSheet("Escalate ticket", onClose, toast, ctaLabel = if (vm.busy == "escalate") "Escalating…" else "Escalate", onCta = { vm.escalate(note, assignee, queue, onClose) }, ctaEnabled = vm.busy == null) {
+        Text("Raises the escalation level (now ${t.escalationLevel}) so it stands out on the web dashboard.", style = BeamType.Small.copy(color = BeamColors.TextSecondary))
+        DropdownField(
+            "Hand to",
+            staff.items.firstOrNull { it.userId == assignee }?.name ?: "Keep current",
+            listOf("Keep current") + staff.items.map { it.name },
+            { name -> assignee = staff.items.firstOrNull { it.name == name }?.userId ?: t.assignee },
+        )
+        DropdownField("Queue", TicketQueues.firstOrNull { it.first == queue }?.second ?: "Keep current", TicketQueues.map { it.second }, { label -> queue = TicketQueues.first { it.second == label }.first })
+        com.helper.beamnetworks.ui.components.FormField("Why (optional)", note, { note = it }, placeholder = "e.g. Customer offline 3 days")
     }
 }
 
@@ -306,7 +347,9 @@ private fun AssignSheet(vm: TicketDetailViewModel, t: TicketDetailDto, onClose: 
     val toast by vm.toasts.message.collectAsStateWithLifecycle()
     var assignee by rememberSaveable { mutableStateOf(t.assignee) }
     var priority by rememberSaveable { mutableStateOf(t.priority) }
-    BeamSheet("Assign ticket", onClose, toast, ctaLabel = if (vm.busy == "assign") "Saving…" else "Save", onCta = { vm.assign(assignee, priority, onClose) }, ctaEnabled = vm.busy == null) {
+    var queue by rememberSaveable { mutableStateOf(t.queue ?: "general") }
+    BeamSheet("Assign ticket", onClose, toast, ctaLabel = if (vm.busy == "assign") "Saving…" else "Save", onCta = { vm.assign(assignee, priority, queue.takeIf { it != t.queue }, onClose) }, ctaEnabled = vm.busy == null) {
+        DropdownField("Queue", TicketQueues.firstOrNull { it.first == queue }?.second ?: queue, TicketQueues.map { it.second }, { label -> queue = TicketQueues.first { it.second == label }.first })
         DropdownField(
             "Assign to",
             staff.items.firstOrNull { it.userId == assignee }?.name ?: "Nobody",

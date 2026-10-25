@@ -71,6 +71,8 @@ data class Ticket(
     val identityId: Int?,
     val customerName: String,
     val created: ZonedDateTime?,
+    val slaStatus: String? = null,
+    val priority: String = "medium",
 ) {
     val number: String get() = "#T-$id"
 }
@@ -120,9 +122,10 @@ data class Job(
     val high: Boolean = false,
     val checkedInAt: ZonedDateTime? = null,
     val sourceTicket: String? = null,
+    val priority: String = "medium",
 )
 
-data class StockItem(val id: Int, val name: String, val quantity: Int, val reorderAt: Int) {
+data class StockItem(val id: Int, val name: String, val quantity: Int, val reorderAt: Int, val itemType: String = "consumable") {
     val isLow: Boolean get() = reorderAt > 0 && quantity <= reorderAt
 }
 

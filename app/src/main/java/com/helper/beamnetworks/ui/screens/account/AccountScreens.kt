@@ -81,7 +81,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /** Public self-service payment page (was "Lipwa Link" in the old drawer). */
-private const val LIPWA_LINK = "https://app.payhero.co.ke/lipwa/1787"
+const val LIPWA_LINK = "https://app.payhero.co.ke/lipwa/1787"
 
 data class AccountUi(
     val email: String = "",
@@ -190,6 +190,41 @@ class StockViewModel(private val app: AppContainer) : ViewModel() {
 
     fun refresh() = app.inventory.items.refreshAsync()
 
+    val staff get() = app.jobs.staff
+    val toasts get() = app.toasts
+    var movements by mutableStateOf<List<com.helper.beamnetworks.data.api.InventoryMovementDto>?>(null)
+        private set
+    var moving by mutableStateOf(false)
+        private set
+
+    fun loadMovements() {
+        viewModelScope.launch {
+            movements = try {
+                com.helper.beamnetworks.data.api.apiCall { app.api.movements() }.results
+            } catch (e: ApiException) {
+                app.toasts.show(e.message ?: "Couldn't load stock history")
+                emptyList()
+            }
+        }
+    }
+
+    fun move(item: StockItem, type: String, quantity: Int, staffUserId: Int?, notes: String, onDone: () -> Unit) {
+        if (moving) return
+        moving = true
+        viewModelScope.launch {
+            try {
+                app.inventory.move(item, type, quantity, staffUserId, notes)
+                app.toasts.show("${item.name}: ${movementLabel(type).lowercase()} $quantity")
+                movements = null
+                onDone()
+            } catch (e: ApiException) {
+                app.toasts.show(e.message ?: "Couldn't record that")
+            } finally {
+                moving = false
+            }
+        }
+    }
+
     /** Steppers update at once; taps are batched into one adjust call after a short pause. */
     fun step(item: StockItem, delta: Int) {
         if (item.quantity + delta < 0) return
@@ -208,11 +243,34 @@ class StockViewModel(private val app: AppContainer) : ViewModel() {
     }
 }
 
+/** Movement types Beam allows per item type (API.md §17). */
+private fun movementsFor(itemType: String): List<String> = when (itemType) {
+    "tool" -> listOf("assign", "return", "receive", "adjust_out")
+    "asset" -> listOf("assign", "install", "return", "receive", "adjust_out")
+    else -> listOf("issue", "receive", "adjust_out")
+}
+
+private fun movementLabel(type: String): String = when (type) {
+    "issue" -> "Issue to technician"
+    "assign" -> "Assign to technician"
+    "install" -> "Install at customer"
+    "return" -> "Returned"
+    "receive" -> "Receive new stock"
+    "adjust_out" -> "Write off (lost/damaged)"
+    "transfer" -> "Transfer"
+    else -> type.replace('_', ' ').replaceFirstChar { it.uppercase() }
+}
+
+private fun movementNeedsStaff(type: String) = type == "issue" || type == "assign" || type == "return"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StockScreen(onEdit: (Int) -> Unit) {
     val vm = containerViewModel { app, _ -> StockViewModel(app) }
     val ui by vm.ui.collectAsStateWithLifecycle()
+    var history by rememberSaveable { mutableStateOf(false) }
+    var moveItem by remember { mutableStateOf<StockItem?>(null) }
+    LaunchedEffect(history, vm.movements) { if (history && vm.movements == null) vm.loadMovements() }
     PullToRefreshBox(isRefreshing = ui.loading && ui.loaded, onRefresh = vm::refresh, modifier = Modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxSize()) {
             item {
@@ -221,6 +279,42 @@ fun StockScreen(onEdit: (Int) -> Unit) {
                     { SmallStat(ui.items.count { it.isLow }.toString(), "Running low", BeamColors.Warning) },
                     Modifier.padding(bottom = 4.dp),
                 )
+            }
+            item {
+                PillTabs(
+                    options = listOf(PillTabOption(false, "Products"), PillTabOption(true, "History")),
+                    selected = history,
+                    onSelect = { history = it },
+                )
+            }
+            if (history) {
+                val list = vm.movements
+                item {
+                    ListCard {
+                        when {
+                            list == null -> Text("Loading…", style = BeamType.Small.copy(color = BeamColors.TextMuted), modifier = Modifier.padding(vertical = 14.dp))
+                            list.isEmpty() -> Text("No stock movements yet.", style = BeamType.Small.copy(color = BeamColors.TextMuted), modifier = Modifier.padding(vertical = 14.dp))
+                        }
+                        list.orEmpty().forEachIndexed { i, m ->
+                            if (i > 0) BeamDivider()
+                            Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("${m.itemName ?: "Item"} · ${movementLabel(m.movementType)}", style = BeamType.RowTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(
+                                        listOfNotNull(m.assignedToName ?: m.assignedToEmail, m.customerName, m.notes?.ifBlank { null }).joinToString(" · ").ifBlank { "—" },
+                                        style = BeamType.Meta, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("×${m.quantity}", style = BeamType.RowTitle)
+                                    Text(shortDate(com.helper.beamnetworks.util.parseDateTime(m.createdAt)?.toLocalDate()), style = BeamType.Meta)
+                                }
+                            }
+                        }
+                    }
+                }
+                item { BottomSpacer() }
+                return@LazyColumn
             }
             when {
                 ui.moduleDisabled -> item { EmptyState("Inventory is off", "Enable the inventory module in Beam to track stock.") }
@@ -233,8 +327,9 @@ fun StockScreen(onEdit: (Int) -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Column(Modifier.weight(1f)) {
                             Text(item.name, style = BeamType.RowTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("Reorder at ${item.reorderAt}", style = BeamType.Meta)
+                            Text("Reorder at ${item.reorderAt} · ${item.itemType.replaceFirstChar { it.uppercase() }}", style = BeamType.Meta)
                         }
+                        com.helper.beamnetworks.ui.components.PillButton("Move", Tones.Blue, BeamColors.PrimaryTintPressed, { moveItem = item })
                         QtyStepper(item.quantity, { vm.step(item, -1) }, { vm.step(item, 1) })
                     }
                     Meter(
@@ -247,6 +342,45 @@ fun StockScreen(onEdit: (Int) -> Unit) {
             }
             item { BottomSpacer() }
         }
+    }
+    moveItem?.let { item -> MoveSheet(vm, ui.items.firstOrNull { it.id == item.id } ?: item) { moveItem = null } }
+}
+
+@Composable
+private fun MoveSheet(vm: StockViewModel, item: StockItem, onClose: () -> Unit) {
+    val toast by vm.toasts.message.collectAsStateWithLifecycle()
+    val staff by vm.staff.state.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.staff.ensureLoaded() }
+    val types = movementsFor(item.itemType)
+    var type by rememberSaveable { mutableStateOf(types.first()) }
+    var qty by rememberSaveable { mutableStateOf("1") }
+    var staffId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var notes by rememberSaveable { mutableStateOf("") }
+    com.helper.beamnetworks.ui.components.BeamSheet(
+        "Move ${item.name}", onClose, toast,
+        ctaLabel = if (vm.moving) "Saving…" else "Save",
+        onCta = {
+            val q = qty.toIntOrNull()
+            when {
+                q == null || q < 1 -> vm.toasts.show("Quantity must be at least 1")
+                movementNeedsStaff(type) && staffId == null -> vm.toasts.show("Choose the technician")
+                else -> vm.move(item, type, q, staffId.takeIf { movementNeedsStaff(type) }, notes, onClose)
+            }
+        },
+        ctaEnabled = !vm.moving,
+    ) {
+        Text("${item.quantity} in stock", style = BeamType.Meta)
+        com.helper.beamnetworks.ui.components.DropdownField("What happened", movementLabel(type), types.map(::movementLabel), { label -> type = types.first { movementLabel(it) == label } })
+        com.helper.beamnetworks.ui.components.FormField("Quantity", qty, { qty = it.filter(Char::isDigit).take(4) }, keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+        if (movementNeedsStaff(type)) {
+            com.helper.beamnetworks.ui.components.DropdownField(
+                "Technician",
+                staff.items.firstOrNull { it.userId == staffId }?.name.orEmpty(),
+                if (staff.items.isEmpty()) listOf("Loading staff…") else staff.items.map { it.name },
+                { name -> staffId = staff.items.firstOrNull { it.name == name }?.userId },
+            )
+        }
+        com.helper.beamnetworks.ui.components.FormField("Notes (optional)", notes, { notes = it })
     }
 }
 

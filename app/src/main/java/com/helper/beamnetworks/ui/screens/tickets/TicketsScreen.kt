@@ -181,7 +181,8 @@ private fun TicketCard(row: TicketRow, onOpen: () -> Unit, onResolve: () -> Unit
                 Text(name, style = BeamType.RowTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("${t.number} · ${relativeAge(t.created)}", style = BeamType.Tag.copy(color = BeamColors.TextMuted, fontWeight = androidx.compose.ui.text.font.FontWeight.Normal))
             }
-            Tag(if (t.high) "High" else "Normal", if (t.high) Tones.Red else Tones.Neutral, large = true)
+            if (t.status.isOpen) slaTag(t.slaStatus)?.let { (label, tone) -> Tag(label, tone, large = true) }
+            priorityTone(t.priority).let { (label, tone) -> Tag(label, tone, large = true) }
         }
         Text(t.description.lineSequence().filterNot { it.startsWith("Customer: ") || it.startsWith("Phone: ") }.joinToString("\n").trim(), style = BeamType.Body.copy(lineHeight = 1.45.em))
         if (t.status.isOpen) {

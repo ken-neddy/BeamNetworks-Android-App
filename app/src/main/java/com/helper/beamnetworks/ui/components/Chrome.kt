@@ -38,13 +38,17 @@ import com.helper.beamnetworks.ui.theme.BeamColors
 import com.helper.beamnetworks.ui.theme.BeamShapes
 import com.helper.beamnetworks.ui.theme.BeamType
 
-/** 56dp bar: bell or back on the left, centred title, "BN" account avatar on the right. */
+/**
+ * 56dp bar: menu (or back on sub-screens) on the left, centred title, then the alerts bell and
+ * the "BN" account avatar on the right. Both sides are 80dp wide so the title stays centred.
+ */
 @Composable
 fun BeamTopBar(
     title: String,
     showBack: Boolean,
     showAlertDot: Boolean,
     onBack: () -> Unit,
+    onMenu: () -> Unit,
     onBell: () -> Unit,
     onAccount: () -> Unit,
 ) {
@@ -57,13 +61,12 @@ fun BeamTopBar(
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(44.dp), contentAlignment = Alignment.CenterStart) {
+        Box(Modifier.size(width = 80.dp, height = 44.dp), contentAlignment = Alignment.CenterStart) {
             CircleButton(
-                icon = if (showBack) BeamIcons.ChevronLeft else BeamIcons.Bell,
-                label = if (showBack) "Back" else "Alerts",
-                onClick = if (showBack) onBack else onBell,
-                iconSize = if (showBack) 18.dp else 17.dp,
-                dot = !showBack && showAlertDot,
+                icon = if (showBack) BeamIcons.ChevronLeft else BeamIcons.Menu,
+                label = if (showBack) "Back" else "Menu",
+                onClick = if (showBack) onBack else onMenu,
+                iconSize = 18.dp,
             )
         }
         Text(
@@ -74,7 +77,12 @@ fun BeamTopBar(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        Box(Modifier.size(44.dp), contentAlignment = Alignment.CenterEnd) {
+        Row(
+            Modifier.size(width = 80.dp, height = 44.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircleButton(BeamIcons.Bell, "Alerts", onBell, iconSize = 17.dp, dot = showAlertDot)
             Box(
                 Modifier
                     .size(36.dp)

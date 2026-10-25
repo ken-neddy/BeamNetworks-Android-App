@@ -10,6 +10,11 @@ import com.helper.beamnetworks.data.Customer
 import com.helper.beamnetworks.data.JobDraft
 import com.helper.beamnetworks.data.JobType
 import com.helper.beamnetworks.data.api.ApiException
+import com.helper.beamnetworks.data.api.CustomerCreate
+import com.helper.beamnetworks.data.api.LocationOptionsDto
+import com.helper.beamnetworks.data.api.apiCall
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import com.helper.beamnetworks.util.kshShort
 import com.helper.beamnetworks.util.normalizePhone
 import com.helper.beamnetworks.util.parseAmountInput
@@ -40,6 +45,42 @@ enum class Picker { CallLog, Map, Sms }
 
 val ExpenseCategories = listOf("Transport", "Equipment", "Bandwidth", "Other")
 
+/** What the website's "Create Customer" form asks for beyond name, phone, email, plan and network. */
+data class CustomerForm(
+    val status: String = "active",
+    val country: String = "Kenya",
+    val county: String = "",
+    val subCounty: String = "",
+    val ward: String = "",
+    val road: String = "",
+    val estate: String = "",
+    val estateSameAsRoad: Boolean = false,
+    val street: String = "",
+    val building: String = "",
+    val house: String = "",
+    val landmark: String = "",
+    val details: String = "",
+    val billed: Boolean = true,
+    /** Day of the month (1–28) the first bill falls on; null bills on today's day of the month. */
+    val billingDay: Int? = null,
+    val referred: Boolean = false,
+    val referrerId: Int? = null,
+    val referrerText: String = "",
+    val rewardMethod: String = "credit",
+    val referralLeadId: Int? = null,
+    val leadNote: String? = null,
+)
+
+private fun String.orNull(): String? = trim().ifBlank { null }
+
+/** Reads "lat,lng" as produced by the map picker; null if it isn't a valid coordinate pair. */
+private fun parsePin(text: String): Pair<Double, Double>? {
+    val match = Regex("""^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$""").matchEntire(text) ?: return null
+    val lat = match.groupValues[1].toDouble()
+    val lng = match.groupValues[2].toDouble()
+    return if (lat in -90.0..90.0 && lng in -180.0..180.0) lat to lng else null
+}
+
 data class Draft(
     val customerId: Int? = null,
     val customerText: String = "",
@@ -57,7 +98,11 @@ data class Draft(
     val time: LocalTime = LocalTime.of(10, 0),
     val technicianId: Int? = null,
     val issue: String = "",
-    val high: Boolean = false,
+    val priority: String = "medium",
+    val queue: String = "general",
+    val sku: String = "",
+    val unitCost: String = "",
+    val unitPrice: String = "",
     val title: String = "",
     val category: String = ExpenseCategories.first(),
     val qty: String = "",
@@ -65,6 +110,10 @@ data class Draft(
     val used: Map<Int, Int> = emptyMap(),
     val days: String = "7",
     val jobType: JobType = JobType.Installation,
+    val code: String = "",
+    val confirmed: Boolean = false,
+    val itemType: String = "consumable",
+    val cust: CustomerForm = CustomerForm(),
 )
 
 /**
@@ -104,10 +153,16 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
         draft = initialDraft(type)
         sheet = type
         when (type) {
-            is SheetType.Payment, is SheetType.Ticket -> app.customers.customers.ensureLoaded()
+            is SheetType.Payment -> app.customers.customers.ensureLoaded()
+            is SheetType.Ticket -> {
+                app.customers.customers.ensureLoaded()
+                app.jobs.staff.ensureLoaded()
+            }
             SheetType.NewCustomer -> {
                 app.customers.plans.ensureLoaded()
                 app.customers.networks.ensureLoaded()
+                app.customers.customers.ensureLoaded()
+                loadCustomerDefaults()
             }
             is SheetType.Job -> {
                 app.customers.customers.ensureLoaded()
@@ -115,6 +170,63 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
             }
             is SheetType.CompleteJob, is SheetType.Product -> app.inventory.items.ensureLoaded()
             else -> Unit
+        }
+    }
+
+    /** County, sub-county and ward suggestions for the add-customer form. */
+    var locations by mutableStateOf(LocationOptionsDto())
+        private set
+
+    /** Pre-fills the location with the business's defaults (admins only), then loads place suggestions. */
+    private fun loadCustomerDefaults() {
+        locations = LocationOptionsDto()
+        viewModelScope.launch {
+            val settings = runCatching { apiCall { app.api.settings() } }.getOrNull()
+            fun setting(key: String) = (settings?.get(key) as? JsonPrimitive)?.contentOrNull.orEmpty()
+            if (sheet == SheetType.NewCustomer) {
+                val c = draft.cust
+                draft = draft.copy(
+                    cust = c.copy(
+                        county = c.county.ifBlank { setting("default_customer_city") },
+                        subCounty = c.subCounty.ifBlank { setting("default_customer_sub_county") },
+                        ward = c.ward.ifBlank { setting("default_customer_ward") },
+                        road = c.road.ifBlank { setting("default_customer_road") },
+                    ),
+                )
+            }
+            refreshLocations()
+        }
+    }
+
+    /** Reloads the sub-county and ward suggestions for the county / sub-county now in the form. */
+    fun refreshLocations() {
+        val c = draft.cust
+        viewModelScope.launch {
+            runCatching { apiCall { app.api.locationOptions(c.county.orNull(), c.subCounty.orNull()) } }.getOrNull()?.let { locations = it }
+        }
+    }
+
+    /** Looks for a pending referral lead with this phone, so the referrer is filled in for the admin. */
+    fun lookupReferralLead(phone: String) {
+        if (normalizePhone(phone).length < 9) return
+        viewModelScope.launch {
+            val lead = runCatching { apiCall { app.api.matchReferralLead(phone.trim()) } }.getOrNull()
+                ?.results?.firstOrNull { it.status == "pending" && it.referrer != null }
+            val c = draft.cust
+            draft = when {
+                lead != null -> draft.copy(
+                    cust = c.copy(
+                        referred = true,
+                        referrerId = lead.referrer,
+                        referrerText = lead.referrerName.orEmpty(),
+                        referralLeadId = lead.id,
+                        leadNote = "Matches a referral from ${lead.referrerName ?: "an existing customer"}",
+                    ),
+                )
+                // The number no longer matches the lead we filled in earlier
+                c.referralLeadId != null -> draft.copy(cust = c.copy(referred = false, referrerId = null, referrerText = "", referralLeadId = null, leadNote = null))
+                else -> draft
+            }
         }
     }
 
@@ -171,6 +283,7 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
                     time = local?.toLocalTime()?.withSecond(0)?.withNano(0) ?: LocalTime.of(10, 0),
                     technicianId = job.technicianId,
                     jobType = job.type,
+                    priority = job.priority,
                 )
             } ?: Draft()
             is SheetType.Expense -> type.editId?.let { id -> app.expenses.expenses.value.items.firstOrNull { it.id == id } }?.let {
@@ -204,8 +317,38 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
                 val plan = app.customers.plans.items.firstOrNull { it.id == d.planId } ?: return fail("Choose a plan")
                 val networks = app.customers.networks.items
                 val networkId = plan.networkScope ?: d.networkId ?: networks.singleOrNull()?.id ?: return fail("Choose a network")
+                val c = d.cust
+                val pin = parsePin(d.location)
+                if (d.location.isNotBlank() && pin == null) return fail("Pick the pin on the map, or clear it")
+                if (c.referred && c.referrerId == null) return fail("Choose who referred this customer")
+                val request = CustomerCreate(
+                    fullName = d.name.trim(),
+                    phone = d.phone.trim(),
+                    plan = plan.id,
+                    network = networkId,
+                    email = d.email.orNull(),
+                    status = c.status,
+                    country = c.country.orNull(),
+                    city = c.county.orNull(),
+                    subCounty = c.subCounty.orNull(),
+                    ward = c.ward.orNull(),
+                    road = c.road.orNull(),
+                    estate = (if (c.estateSameAsRoad) c.road else c.estate).orNull(),
+                    street = c.street.orNull(),
+                    building = c.building.orNull(),
+                    houseNumber = c.house.orNull(),
+                    commonMarker = c.landmark.orNull(),
+                    moreDetails = c.details.orNull(),
+                    latitude = pin?.let { "%.6f".format(java.util.Locale.US, it.first) },
+                    longitude = pin?.let { "%.6f".format(java.util.Locale.US, it.second) },
+                    isBilled = c.billed,
+                    billingCycleDay = c.billingDay,
+                    referredBy = c.referrerId.takeIf { c.referred },
+                    referralRewardMethod = c.rewardMethod.takeIf { c.referred },
+                    referralLead = c.referralLeadId.takeIf { c.referred },
+                )
                 run {
-                    app.customers.create(d.name.trim(), d.phone.trim(), d.email, plan.id, networkId)
+                    app.customers.create(request)
                     done("${d.name.trim()} added", SheetDestination.Customers)
                 }
             }
@@ -213,7 +356,7 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
                 val name = d.name.trim().ifBlank { d.customerText.trim() }
                 if (name.isBlank()) return fail("Add the customer name")
                 val customer = d.customerId?.let { app.customers.byId(it) }?.takeIf { it.name == name }
-                val jobDraft = JobDraft(name, customer?.identityId, d.phone, d.location, d.notes, d.hasRouter, d.date, d.time, d.technicianId, d.jobType)
+                val jobDraft = JobDraft(name, customer?.identityId, d.phone, d.location, d.notes, d.hasRouter, d.date, d.time, d.technicianId, d.jobType, d.priority)
                 run {
                     if (type.editId == null) {
                         app.jobs.schedule(jobDraft)
@@ -231,7 +374,7 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
                 if (customerName.isBlank()) return fail("Choose a customer")
                 run {
                     val withPhone = if (customer == null && d.phone.isNotBlank()) "${d.issue.trim()}\nPhone: ${d.phone.trim()}" else d.issue.trim()
-                    app.tickets.raise(withPhone, d.high, customer?.identityId, customerName)
+                    app.tickets.raise(withPhone, d.priority, d.queue, d.technicianId, customer?.identityId, customerName)
                     app.issues.remember(d.issue)
                     done("Ticket raised", SheetDestination.Tickets)
                 }
@@ -258,7 +401,7 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
                         if (min != existing.reorderAt) app.inventory.setReorderAt(existing, min)
                         done("${existing.name} updated")
                     } else {
-                        app.inventory.addOrRestock(d.name, qty, min)
+                        app.inventory.addOrRestock(d.name, qty, min, d.itemType, d.sku, parseAmountInput(d.unitCost), parseAmountInput(d.unitPrice))
                         done("${d.name.trim()} added", SheetDestination.Stock)
                     }
                 }
@@ -266,7 +409,7 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
             is SheetType.CompleteJob -> {
                 val job = app.jobs.byId(type.jobId) ?: return fail("That installation no longer exists")
                 run {
-                    app.jobs.complete(job, d.used)
+                    app.jobs.complete(job, d.used, d.code, d.confirmed, d.notes)
                     if (d.used.values.any { it > 0 }) app.inventory.items.refreshAsync()
                     done("${job.customerName} marked done")
                 }
@@ -281,6 +424,15 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
                 }
             }
             SheetType.Create -> Unit
+        }
+    }
+
+    /** Archives the product being edited (Beam keeps its movement history). */
+    fun archiveProduct(id: Int) {
+        val item = app.inventory.items.items.firstOrNull { it.id == id } ?: return
+        run {
+            app.inventory.archive(item)
+            done("${item.name} archived")
         }
     }
 

@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.helper.beamnetworks.data.Customer
 import com.helper.beamnetworks.data.JobType
@@ -50,7 +51,7 @@ fun SheetHost(vm: SheetViewModel, onDeleteExpense: (String) -> Unit) {
     val (title, cta) = when (type) {
         SheetType.Create -> "Create new" to null
         is SheetType.Payment -> "Record payment" to "Save payment"
-        SheetType.NewCustomer -> "New customer" to "Add customer"
+        SheetType.NewCustomer -> "Create customer" to "Create customer"
         is SheetType.Job -> if (type.editId == null) "Schedule a job" to "Schedule" else "Edit job" to "Save changes"
         is SheetType.Ticket -> "Raise a ticket" to "Raise ticket"
         is SheetType.Expense -> if (type.editId == null) "Log an expense" to "Log expense" else "Edit expense" to "Save changes"
@@ -103,7 +104,18 @@ fun SheetHost(vm: SheetViewModel, onDeleteExpense: (String) -> Unit) {
                     { FormField("Reorder at", d.min, { v -> vm.edit { copy(min = v.filter { it.isDigit() }) } }, keyboardType = KeyboardType.Number) },
                 )
                 if (type.editId == null) {
+                    val kinds = listOf("consumable" to "Consumable (cable, connectors)", "asset" to "Asset (routers, ONTs)", "tool" to "Tool (lent to technicians)")
+                    DropdownField("Type", kinds.first { it.first == d.itemType }.second, kinds.map { it.second }, { label ->
+                        vm.edit { copy(itemType = kinds.first { it.second == label }.first) }
+                    })
+                    FormField("SKU / code (optional)", d.sku, { v -> vm.edit { copy(sku = v.uppercase()) } }, placeholder = "Made up for you if left blank")
+                    TwoColumns(
+                        { FormField("Unit cost (Ksh)", d.unitCost, { v -> vm.edit { copy(unitCost = v) } }, keyboardType = KeyboardType.Decimal) },
+                        { FormField("Selling price (Ksh)", d.unitPrice, { v -> vm.edit { copy(unitPrice = v) } }, keyboardType = KeyboardType.Decimal) },
+                    )
                     Text("If the product already exists, the quantity is added to its stock.", style = BeamType.Meta)
+                } else {
+                    SecondaryButton("Archive product", { vm.archiveProduct(type.editId) }, textColor = BeamColors.Danger, height = 48.dp, bold = true)
                 }
             }
             is SheetType.CompleteJob -> CompleteJobFields(vm)
@@ -177,28 +189,151 @@ private fun CustomerField(vm: SheetViewModel, label: String, allowCallLog: Boole
 @Composable
 private fun NewCustomerFields(vm: SheetViewModel) {
     val d = vm.draft
+    val c = d.cust
     val plans by vm.customers.plans.state.collectAsStateWithLifecycle()
     val networks by vm.customers.networks.state.collectAsStateWithLifecycle()
-    FormField("Full name", d.name, { v -> vm.edit { copy(name = v) } })
-    FormField("Phone", d.phone, { v -> vm.edit { copy(phone = v) } }, placeholder = "2547…", keyboardType = KeyboardType.Phone)
-    FormField("Email (optional)", d.email, { v -> vm.edit { copy(email = v) } }, keyboardType = KeyboardType.Email)
-    val planNames = plans.items.map { it.name }
-    DropdownField(
-        "Plan",
-        plans.items.firstOrNull { it.id == d.planId }?.name.orEmpty(),
-        if (plans.loading && planNames.isEmpty()) listOf("Loading plans…") else planNames,
-        { name -> plans.items.firstOrNull { it.name == name }?.let { p -> vm.edit { copy(planId = p.id) } } },
-    )
+    val customers by vm.customers.customers.state.collectAsStateWithLifecycle()
     val plan = plans.items.firstOrNull { it.id == d.planId }
-    if (plan?.networkScope == null && networks.items.size > 1) {
-        DropdownField(
-            "Network",
-            networks.items.firstOrNull { it.id == d.networkId }?.name.orEmpty(),
-            networks.items.map { it.name },
-            { name -> networks.items.firstOrNull { it.name == name }?.let { n -> vm.edit { copy(networkId = n.id) } } },
+    fun cust(change: CustomerForm.() -> CustomerForm) = vm.edit { copy(cust = cust.change()) }
+
+    // A pending referral lead for this number fills in the referrer
+    LaunchedEffect(d.phone) {
+        delay(600)
+        vm.lookupReferralLead(d.phone)
+    }
+    // With one network there's nothing to choose
+    LaunchedEffect(networks.items) {
+        if (d.networkId == null) networks.items.singleOrNull()?.let { n -> vm.edit { copy(networkId = n.id) } }
+    }
+
+    FormField("Full name", d.name, { v -> vm.edit { copy(name = v) } }, placeholder = "Jane Wanjiku")
+    FormField("Phone", d.phone, { v -> vm.edit { copy(phone = v) } }, placeholder = "0712345678", keyboardType = KeyboardType.Phone)
+    FormField("Email (optional)", d.email, { v -> vm.edit { copy(email = v) } }, placeholder = "customer@example.com", keyboardType = KeyboardType.Email)
+    TwoColumns(
+        {
+            DropdownField(
+                "Plan",
+                plan?.name.orEmpty(),
+                if (plans.loading && plans.items.isEmpty()) listOf("Loading plans…") else plans.items.map { it.name },
+                { name ->
+                    plans.items.firstOrNull { it.name == name }?.let { p -> vm.edit { copy(planId = p.id, networkId = p.networkScope ?: networkId) } }
+                },
+            )
+        },
+        {
+            DropdownField(
+                "Network",
+                networks.items.firstOrNull { it.id == (plan?.networkScope ?: d.networkId) }?.name.orEmpty(),
+                if (networks.loading && networks.items.isEmpty()) listOf("Loading…") else networks.items.map { it.name },
+                { name -> networks.items.firstOrNull { it.name == name }?.let { n -> vm.edit { copy(networkId = n.id) } } },
+            )
+        },
+    )
+    DropdownField("Status", if (c.status == "suspended") "Suspended" else "Active", listOf("Active", "Suspended"), { v -> cust { copy(status = v.lowercase()) } })
+
+    // ---- Location ----
+    Text("Location (optional)", style = BeamType.SectionTitle, modifier = Modifier.padding(top = 6.dp))
+    Text(
+        "None of these are required. The more you fill in, the easier it is to group this customer with others nearby, for outage compensation or a targeted message.",
+        style = BeamType.Meta,
+    )
+    FormField(
+        "Map pin", d.location, { v -> vm.edit { copy(location = v) } }, placeholder = "Tap the pin to choose on the map",
+        trailingIcon = BeamIcons.MapPin, trailingLabel = "Pick on map", onTrailing = { vm.openPicker(Picker.Map) },
+    )
+    TwoColumns(
+        { FormField("Country", c.country, { v -> cust { copy(country = v) } }) },
+        {
+            SuggestField(
+                "County", c.county, { v -> cust { copy(county = v) } }, vm.locations.cities, { it },
+                onPick = { v: String ->
+                    cust { copy(county = v) }
+                    vm.refreshLocations()
+                },
+                maxShown = 5,
+            )
+        },
+    )
+    TwoColumns(
+        {
+            SuggestField(
+                "Sub-county", c.subCounty, { v -> cust { copy(subCounty = v) } }, vm.locations.subCounties, { it },
+                onPick = { v: String ->
+                    cust { copy(subCounty = v) }
+                    vm.refreshLocations()
+                },
+                maxShown = 5,
+            )
+        },
+        {
+            SuggestField(
+                "Ward", c.ward, { v -> cust { copy(ward = v) } }, vm.locations.wards, { it },
+                onPick = { v: String -> cust { copy(ward = v) } },
+                maxShown = 5,
+            )
+        },
+    )
+    TwoColumns(
+        { FormField("Road", c.road, { v -> cust { copy(road = v, estate = if (estateSameAsRoad) v else estate) } }) },
+        {
+            FormField(
+                "Estate", if (c.estateSameAsRoad) c.road else c.estate,
+                { v -> if (!c.estateSameAsRoad) cust { copy(estate = v) } },
+            )
+        },
+    )
+    SwitchRow("Estate is the same as the road", c.estateSameAsRoad) { on -> cust { copy(estateSameAsRoad = on, estate = if (on) road else estate) } }
+    TwoColumns(
+        { FormField("Street", c.street, { v -> cust { copy(street = v) } }, placeholder = "Kimathi Street") },
+        { FormField("Building", c.building, { v -> cust { copy(building = v) } }, placeholder = "Rahimtulla Tower") },
+    )
+    TwoColumns(
+        { FormField("House / unit no.", c.house, { v -> cust { copy(house = v) } }, placeholder = "4B") },
+        { FormField("Another common marker", c.landmark, { v -> cust { copy(landmark = v) } }, placeholder = "Blue gate opposite…") },
+    )
+    FormField("More details", c.details, { v -> cust { copy(details = v) } }, placeholder = "Any other directions or notes that help locate this customer", singleLine = false)
+
+    // ---- Billing ----
+    Text("Billing", style = BeamType.SectionTitle, modifier = Modifier.padding(top = 6.dp))
+    SwitchRow("Billed account", c.billed) { on -> cust { copy(billed = on) } }
+    Text("Invoices are generated and the account is suspended if unpaid. Turn off for test or free accounts.", style = BeamType.Meta)
+    val dayOptions = listOf("Today's day of the month") + (1..28).map { ordinal(it) }
+    DropdownField(
+        "Billing day (optional)",
+        c.billingDay?.let { ordinal(it) } ?: dayOptions.first(),
+        dayOptions,
+        { label -> cust { copy(billingDay = dayOptions.indexOf(label).takeIf { it > 0 }) } },
+    )
+    Text("Leave as it is to bill on today's day of the month. Days run from the 1st to the 28th.", style = BeamType.Meta)
+
+    // ---- Referral ----
+    SwitchRow("This customer was referred by an existing customer", c.referred) { on ->
+        cust { if (on) copy(referred = true) else copy(referred = false, referrerId = null, referrerText = "", referralLeadId = null, leadNote = null) }
+    }
+    if (c.referred) {
+        SuggestField(
+            label = "Referred by",
+            value = c.referrerText,
+            onValueChange = { v -> cust { copy(referrerText = v, referrerId = null, referralLeadId = null, leadNote = null) } },
+            suggestions = customers.items,
+            suggestionText = { it.name },
+            onPick = { picked: Customer -> cust { copy(referrerId = picked.id, referrerText = picked.name) } },
+            placeholder = "Search the referrer's name",
         )
+        val rewards = listOf("credit" to "Credit on their account", "cash" to "Cash payout")
+        DropdownField("Reward", rewards.first { it.first == c.rewardMethod }.second, rewards.map { it.second }, { label -> cust { copy(rewardMethod = rewards.first { it.second == label }.first) } })
+        c.leadNote?.let { Text(it, style = BeamType.Meta.copy(color = BeamColors.Success)) }
+        Text("The reward is given when the new customer makes their first payment.", style = BeamType.Meta)
     }
     Text("Beam texts the customer their portal login. They have one hour to pay before service is suspended.", style = BeamType.Meta)
+}
+
+private fun ordinal(n: Int): String = n.toString() + when {
+    n % 100 in 11..13 -> "th"
+    n % 10 == 1 -> "st"
+    n % 10 == 2 -> "nd"
+    n % 10 == 3 -> "rd"
+    else -> "th"
 }
 
 @Composable
@@ -212,6 +347,8 @@ private fun JobFields(vm: SheetViewModel) {
         JobType.entries.map { it.label },
         { label -> vm.edit { copy(jobType = JobType.entries.first { it.label == label }) } },
     )
+    val priorities = listOf("low" to "Low", "medium" to "Normal", "high" to "High", "urgent" to "Urgent")
+    DropdownField("Priority", priorities.first { it.first == d.priority }.second, priorities.map { it.second }, { label -> vm.edit { copy(priority = priorities.first { it.second == label }.first) } })
     SuggestField(
         label = "Customer name",
         value = d.name,
@@ -265,10 +402,25 @@ private fun TicketFields(vm: SheetViewModel) {
         onPick = { v: String -> vm.edit { copy(issue = v) } },
         placeholder = "e.g. No internet since morning",
     )
+    val staff by vm.jobs.staff.state.collectAsStateWithLifecycle()
+    Text("Priority", style = BeamType.Label)
     PillTabs(
-        options = listOf(PillTabOption(false, "Normal"), PillTabOption(true, "High")),
-        selected = d.high,
-        onSelect = { v -> vm.edit { copy(high = v) } },
+        options = listOf("low" to "Low", "medium" to "Normal", "high" to "High", "urgent" to "Urgent").map { PillTabOption(it.first, it.second) },
+        selected = d.priority,
+        onSelect = { v -> vm.edit { copy(priority = v) } },
+    )
+    val queues = listOf("general" to "General", "technical" to "Technical", "billing" to "Billing", "field" to "Field", "network" to "Network")
+    TwoColumns(
+        { DropdownField("Queue", queues.first { it.first == d.queue }.second, queues.map { it.second }, { label -> vm.edit { copy(queue = queues.first { it.second == label }.first) } }) },
+        {
+            val nobody = "Nobody"
+            DropdownField(
+                "Assign to",
+                staff.items.firstOrNull { it.userId == d.technicianId }?.name ?: nobody,
+                listOf(nobody) + staff.items.map { it.name },
+                { name -> vm.edit { copy(technicianId = staff.items.firstOrNull { it.name == name }?.userId) } },
+            )
+        },
     )
 }
 
@@ -301,6 +453,9 @@ private fun CompleteJobFields(vm: SheetViewModel) {
             }
         }
     }
+    FormField("What was done (optional)", d.notes, { v -> vm.edit { copy(notes = v) } }, placeholder = "e.g. Replaced patch cord, signal -19 dBm", singleLine = false)
+    FormField("Completion code (optional)", d.code, { v -> vm.edit { copy(code = v.uppercase()) } }, placeholder = "Code the customer gives you")
+    SwitchRow("Customer confirmed it works", d.confirmed) { v -> vm.edit { copy(confirmed = v) } }
 }
 
 /** Keeps a picker's result flowing back into the draft; see [SheetViewModel.resumeAfterPicker]. */

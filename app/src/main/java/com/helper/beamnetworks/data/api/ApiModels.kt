@@ -78,6 +78,49 @@ data class CustomerCreate(
     val plan: Int,
     val network: Int,
     val email: String? = null,
+    val status: String? = null,
+    // Location (the website's "Location" block); blanks are sent as null so defaults apply
+    val country: String? = null,
+    val city: String? = null,
+    @SerialName("sub_county") val subCounty: String? = null,
+    val ward: String? = null,
+    val road: String? = null,
+    val estate: String? = null,
+    val street: String? = null,
+    val building: String? = null,
+    @SerialName("house_number") val houseNumber: String? = null,
+    @SerialName("common_marker") val commonMarker: String? = null,
+    @SerialName("more_details") val moreDetails: String? = null,
+    val latitude: String? = null,
+    val longitude: String? = null,
+    // Billing
+    @SerialName("is_billed") val isBilled: Boolean? = null,
+    @SerialName("billing_cycle_day") val billingCycleDay: Int? = null,
+    // Referral
+    @SerialName("referred_by") val referredBy: Int? = null,
+    @SerialName("referral_reward_method") val referralRewardMethod: String? = null,
+    @SerialName("referral_lead") val referralLead: Int? = null,
+)
+
+/** A pending referral lead that matches a phone number typed into the add-customer form. */
+@Serializable
+data class ReferralLeadDto(
+    val id: Int,
+    val referrer: Int? = null,
+    @SerialName("referrer_name") val referrerName: String? = null,
+    @SerialName("lead_full_name") val leadFullName: String? = null,
+    val status: String = "",
+)
+
+@Serializable
+data class ReferralMatchDto(val results: List<ReferralLeadDto> = emptyList())
+
+/** Distinct places already on file, for the County / Sub-county / Ward pickers. */
+@Serializable
+data class LocationOptionsDto(
+    val cities: List<String> = emptyList(),
+    @SerialName("sub_counties") val subCounties: List<String> = emptyList(),
+    val wards: List<String> = emptyList(),
 )
 
 @Serializable
@@ -141,6 +184,9 @@ data class InvoiceDto(
     val customer: Int? = null,
     val status: String = "",
     val total: String = "0",
+    /** Before credit is applied; `total` is what's left after credit, so it understates billing. */
+    val subtotal: String? = null,
+    @SerialName("tax_amount") val taxAmount: String? = null,
     @SerialName("period_start") val periodStart: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
 )
@@ -167,6 +213,8 @@ data class TicketCreate(
     val subject: String,
     val description: String,
     val priority: String,
+    val queue: String? = null,
+    val assignee: Int? = null,
     @SerialName("customer_identity") val customerIdentity: Int? = null,
 )
 
@@ -202,6 +250,7 @@ data class JobDto(
 data class JobCreate(
     val title: String,
     val description: String,
+    val priority: String? = null,
     @SerialName("job_type") val jobType: String = "installation",
     @SerialName("scheduled_for") val scheduledFor: String,
     @SerialName("customer_identity") val customerIdentity: Int? = null,
@@ -252,6 +301,8 @@ data class InventoryCreate(
     val name: String,
     val sku: String,
     @SerialName("item_type") val itemType: String = "consumable",
+    @SerialName("unit_cost") val unitCost: String? = null,
+    @SerialName("unit_price") val unitPrice: String? = null,
     @SerialName("quantity_in_stock") val quantity: Int,
     @SerialName("reorder_threshold") val reorderThreshold: Int,
 )
