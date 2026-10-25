@@ -1,59 +1,75 @@
 package com.helper.beamnetworks.ui.theme
 
-import android.app.Activity
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
+import androidx.compose.ui.unit.dp
 
 private val LightColorScheme = lightColorScheme(
-    primary = BrandBlue,         // #30449C
+    primary = BeamColors.Primary,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE8EAF6),
-    onPrimaryContainer = BrandBlue,
-    
-    secondary = BrandOrange,      // #F26222
+    primaryContainer = BeamColors.PrimaryTint,
+    onPrimaryContainer = BeamColors.Primary,
+
+    secondary = BeamColors.Accent,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFFFF3E0),
-    onSecondaryContainer = Color(0xFFE65100),
-    
-    tertiary = BrandYellow,       // #F9AE1A
+    secondaryContainer = Color(0xFFFEEDE5),
+    onSecondaryContainer = Color(0xFFB4410F),
+
+    tertiary = BeamColors.Success,
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFFFFDE7),
-    onTertiaryContainer = Color(0xFFF57F17),
-    
-    error = BrandRed,             // #E02826
+    tertiaryContainer = BeamColors.SuccessTint,
+    onTertiaryContainer = BeamColors.Success,
+
+    error = BeamColors.Danger,
     onError = Color.White,
-    
-    background = Color(0xFFF5F5F5), // Distinct off-white background
-    surface = Color.White,          // Pure white for cards and surfaces
-    onBackground = Color(0xFF111827),
-    onSurface = Color(0xFF111827),
-    surfaceVariant = Color(0xFFF3F4F6),
-    onSurfaceVariant = Color(0xFF4B5563),
-    outline = Color(0xFFD1D5DB)
+    errorContainer = BeamColors.DangerTint,
+    onErrorContainer = BeamColors.Danger,
+
+    background = BeamColors.Background,
+    onBackground = BeamColors.Ink,
+    surface = BeamColors.Surface,
+    onSurface = BeamColors.Ink,
+    surfaceVariant = BeamColors.InputFill,
+    onSurfaceVariant = BeamColors.TextSecondary,
+    surfaceContainerLowest = Color.White,
+    surfaceContainerLow = Color.White,
+    surfaceContainer = Color.White,
+    surfaceContainerHigh = Color.White,
+    surfaceContainerHighest = BeamColors.InputFill,
+    outline = Color(0xFFD5D7DC),
+    outlineVariant = BeamColors.Divider,
+    scrim = Color(0xFF111318),
+)
+
+object BeamShapes {
+    val Card = RoundedCornerShape(16.dp)
+    val CardLarge = RoundedCornerShape(20.dp)
+    val Sheet = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    val Button = RoundedCornerShape(14.dp)
+    val Input = RoundedCornerShape(12.dp)
+    val Tile = RoundedCornerShape(12.dp)
+    val TileSmall = RoundedCornerShape(10.dp)
+    val Pill = RoundedCornerShape(percent = 50)
+}
+
+private val AppShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = BeamShapes.Input,
+    medium = BeamShapes.Card,
+    large = BeamShapes.CardLarge,
+    extraLarge = RoundedCornerShape(28.dp),
 )
 
 @Composable
-fun BeamNetworksTheme(
-    content: @Composable () -> Unit
-) {
-    val colorScheme = LightColorScheme
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        androidx.compose.runtime.SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-        }
-    }
-
+fun BeamNetworksTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = LightColorScheme,
         typography = Typography,
-        content = content
+        shapes = AppShapes,
+        content = content,
     )
 }

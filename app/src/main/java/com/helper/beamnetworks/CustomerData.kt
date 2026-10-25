@@ -1,17 +1,8 @@
 package com.helper.beamnetworks
 
-import com.google.firebase.database.PropertyName
-
+/** Caller lookup shape used by the call log screen. */
 data class CustomerData(
-    @get:PropertyName("Name")
-    @set:PropertyName("Name")
     var name: String = "",
-    
-    @get:PropertyName("Phone")
-    @set:PropertyName("Phone")
     var phone: String = "",
-    
-    @get:PropertyName("Package")
-    @set:PropertyName("Package")
-    var packageName: String = ""
+    var packageName: String = "",
 )

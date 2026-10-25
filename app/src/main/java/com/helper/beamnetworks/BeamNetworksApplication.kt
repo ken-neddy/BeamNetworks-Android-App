@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.net.Uri
 import android.os.Build
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.helper.beamnetworks.R
@@ -12,8 +13,12 @@ import java.util.concurrent.TimeUnit
 
 class BeamNetworksApplication : Application() {
 
+    lateinit var container: com.helper.beamnetworks.data.AppContainer
+        private set
+
     override fun onCreate() {
         super.onCreate()
+        container = com.helper.beamnetworks.data.AppContainer(this)
         createNotificationChannels()
         scheduleInstallationReminder()
     }
@@ -56,11 +61,19 @@ class BeamNetworksApplication : Application() {
             notificationManager.createNotificationChannel(callerIdChannel)
             notificationManager.createNotificationChannel(reminderChannel)
             notificationManager.createNotificationChannel(newInstallationChannel)
+            container.notifier.createChannels()
         }
     }
 
     private fun scheduleInstallationReminder() {
         val reminderWorkRequest = PeriodicWorkRequestBuilder<InstallationReminderWorker>(1, TimeUnit.DAYS).build()
-        WorkManager.getInstance(this).enqueue(reminderWorkRequest)
+        val workManager = WorkManager.getInstance(this)
+        // Earlier versions enqueued a new periodic request on every launch; clear those once
+        val prefs = getSharedPreferences("beam_app", MODE_PRIVATE)
+        if (!prefs.getBoolean("reminders_deduplicated", false)) {
+            workManager.cancelAllWorkByTag(InstallationReminderWorker::class.java.name)
+            prefs.edit().putBoolean("reminders_deduplicated", true).apply()
+        }
+        workManager.enqueueUniquePeriodicWork("installation_reminder", ExistingPeriodicWorkPolicy.KEEP, reminderWorkRequest)
     }
 }
