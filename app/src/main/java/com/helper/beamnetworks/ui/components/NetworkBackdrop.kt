@@ -151,7 +151,7 @@ private class Packets(private val graph: NetworkGraph) {
 }
 
 /** Graph units (the 660 x 480 canvas) per second. */
-private const val PACKET_SPEED = 90f
+private const val PACKET_SPEED = 40f
 private const val HALO = 9.6f
 private const val GRAPH_W = 660f
 private const val GRAPH_H = 480f
