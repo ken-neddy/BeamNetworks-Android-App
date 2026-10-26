@@ -19,6 +19,12 @@ interface BeamApi {
     @POST("auth/tenant/password-reset/confirm/")
     suspend fun confirmPasswordReset(@Body body: PasswordResetConfirm)
 
+    @POST("auth/tenant/change-password/")
+    suspend fun changePassword(@Body body: ChangePasswordRequest): ChangePasswordResponse
+
+    @PATCH("customers/staff/{id}/")
+    suspend fun updateStaff(@Path("id") id: Int, @Body body: StaffUpdate): StaffDto
+
     @POST("auth/tenant/logout/")
     suspend fun logout(@Body body: RefreshRequest)
 

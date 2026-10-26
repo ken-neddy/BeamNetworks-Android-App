@@ -185,7 +185,7 @@ fun ForgotPasswordSheet(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun MaskedField(label: String, value: String, onValueChange: (String) -> Unit) {
+internal fun MaskedField(label: String, value: String, onValueChange: (String) -> Unit) {
     FieldLabel(label) {
         BasicTextField(
             value = value,

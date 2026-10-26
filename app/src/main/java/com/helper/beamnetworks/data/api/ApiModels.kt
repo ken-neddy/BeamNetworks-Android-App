@@ -280,8 +280,25 @@ data class StaffDto(
     val user: Int? = null,
     val name: String = "",
     val email: String = "",
+    val phone: String? = null,
+    @SerialName("role_type") val roleType: String? = null,
+    @SerialName("role_name") val roleName: String? = null,
     @SerialName("is_active") val isActive: Boolean = true,
 )
+
+/** What a staff member may change on their own profile. */
+@Serializable
+data class StaffUpdate(val name: String, val phone: String)
+
+@Serializable
+data class ChangePasswordRequest(
+    @SerialName("current_password") val currentPassword: String,
+    @SerialName("new_password") val newPassword: String,
+)
+
+/** A fresh token pair comes back, because every other session is signed out. */
+@Serializable
+data class ChangePasswordResponse(val detail: String = "", val access: String? = null, val refresh: String? = null)
 
 // ---- Inventory ----
 

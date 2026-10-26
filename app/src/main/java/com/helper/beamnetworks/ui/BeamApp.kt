@@ -47,7 +47,7 @@ import com.helper.beamnetworks.ui.navigation.NotificationsRoute
 import com.helper.beamnetworks.ui.navigation.StockRoute
 import com.helper.beamnetworks.ui.navigation.TicketsRoute
 import com.helper.beamnetworks.ui.navigation.containerViewModel
-import com.helper.beamnetworks.ui.screens.account.AccountScreen
+import com.helper.beamnetworks.ui.screens.account.ProfileScreen
 import com.helper.beamnetworks.ui.screens.account.AccountsScreen
 import com.helper.beamnetworks.ui.screens.account.StockScreen
 import com.helper.beamnetworks.ui.screens.customers.CustomerDetailScreen
@@ -319,16 +319,7 @@ private fun BeamShell(app: AppContainer) {
                     TicketDetailScreen()
                 }
                 composable<AccountRoute>(deepLinks = listOf(navDeepLink<AccountRoute>(basePath = "beamnetworks://app/account"))) {
-                    AccountScreen(
-                        onNotifications = { nav.navigate(NotificationSettingsRoute) },
-                        onNetwork = { nav.navigate(NetworkRoute) },
-                        onStock = { nav.navigate(StockRoute) },
-                        onAccounts = { nav.navigate(AccountsRoute) },
-                        onSessions = { nav.navigate(SessionsRoute) },
-                        onAnnouncements = { nav.navigate(AnnouncementsRoute) },
-                        onCallLog = { nav.navigate(CallLogRoute) },
-                        onMap = { nav.navigate(MapRoute) },
-                    )
+                    ProfileScreen()
                 }
                 composable<StockRoute>(deepLinks = listOf(navDeepLink<StockRoute>(basePath = "beamnetworks://app/stock"))) { StockScreen { sheets.open(SheetType.Product(it)) } }
                 composable<NotificationsRoute>(deepLinks = listOf(navDeepLink<NotificationsRoute>(basePath = "beamnetworks://app/notifications"))) {
@@ -412,7 +403,7 @@ private fun titleFor(destination: NavDestination?): String = when {
     destination.isAny(InstallDetailRoute::class) -> "Job"
     destination.isAny(TicketsRoute::class) -> "Tickets"
     destination.isAny(TicketDetailRoute::class) -> "Ticket"
-    destination.isAny(AccountRoute::class) -> "Account"
+    destination.isAny(AccountRoute::class) -> "Profile"
     destination.isAny(StockRoute::class) -> "Stock"
     destination.isAny(AccountsRoute::class) -> "Accounts"
     destination.isAny(NotificationsRoute::class) -> "Notifications"
