@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
@@ -139,6 +140,9 @@ object AppUpdater {
     fun retry() {
         _state.value = UpdateState.Idle
     }
+
+    /** The newest published version, for the background notification check. */
+    suspend fun fetchLatest(): UpdateInfo = withContext(Dispatchers.IO) { fetchInfo() }
 
     private fun fetchInfo(): UpdateInfo {
         val request = Request.Builder().url(BuildConfig.UPDATE_BASE_URL + "version.json").header("Cache-Control", "no-cache").build()

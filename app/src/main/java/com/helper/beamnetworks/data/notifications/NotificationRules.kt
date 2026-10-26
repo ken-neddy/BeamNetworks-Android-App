@@ -23,6 +23,8 @@ data class CheckerState(
     val lowStock: Set<Int> = emptySet(),
     /** Jobs assigned to this user that have already been announced. */
     val myJobs: Set<Int> = emptySet(),
+    /** Highest app versionCode already announced with a notification. */
+    val updateNotified: Int = 0,
 )
 
 @Serializable
@@ -37,6 +39,9 @@ data class PeriodSnapshot(val id: Int, val customerId: Int?, val name: String, v
 
 /** Pure change-detection rules, kept apart from I/O so they can be unit-tested. */
 object NotificationRules {
+
+    /** An update is announced once per version: newer than what is installed and not yet announced. */
+    fun shouldAnnounceUpdate(installed: Int, latest: Int, alreadyAnnounced: Int) = latest > installed && latest > alreadyAnnounced
 
     data class DeviceChange(val device: DeviceSnapshot, val wentOffline: Boolean, val offlineForMs: Long?)
 

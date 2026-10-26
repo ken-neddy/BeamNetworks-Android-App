@@ -25,3 +25,12 @@ class UpdateInfoTest {
         assertEquals(emptyList<String>(), info.changesSince("1.3").map { it.version })
     }
 }
+
+class UpdateAnnouncementTest {
+    @Test
+    fun announcesANewerVersionOnlyOnce() {
+        assertEquals(true, com.helper.beamnetworks.data.notifications.NotificationRules.shouldAnnounceUpdate(installed = 4, latest = 5, alreadyAnnounced = 0))
+        assertEquals(false, com.helper.beamnetworks.data.notifications.NotificationRules.shouldAnnounceUpdate(installed = 4, latest = 5, alreadyAnnounced = 5))
+        assertEquals(false, com.helper.beamnetworks.data.notifications.NotificationRules.shouldAnnounceUpdate(installed = 5, latest = 5, alreadyAnnounced = 0))
+    }
+}

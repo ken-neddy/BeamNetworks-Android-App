@@ -8,7 +8,9 @@ import com.helper.beamnetworks.data.api.OfflinePeriodDto
 import com.helper.beamnetworks.data.api.SessionStore
 import com.helper.beamnetworks.data.api.apiCall
 import com.helper.beamnetworks.data.api.fetchAllPages
+import com.helper.beamnetworks.BuildConfig
 import com.helper.beamnetworks.data.JobType
+import com.helper.beamnetworks.data.update.AppUpdater
 import com.helper.beamnetworks.util.parseDateTime
 import com.helper.beamnetworks.util.whenLabel
 import com.helper.beamnetworks.util.zone
@@ -74,6 +76,7 @@ class NotificationChecker(
         source("balances", NotificationCategory.Billing) { s, out -> checkBalances(s, out, now) }
         source("stock", NotificationCategory.Stock) { s, out -> checkStock(s, out, now) }
         source("jobs", NotificationCategory.Jobs) { s, out -> checkMyJobs(s, out, now) }
+        source("update", NotificationCategory.Updates) { s, out -> checkUpdate(s, out, now) }
 
         saveState(state)
         feed.add(events)
@@ -348,6 +351,24 @@ class NotificationChecker(
             )
         }
         return s.copy(smsLow = smsLow, payheroLow = payheroLow)
+    }
+
+    /** Tells staff when a newer BeamOps has been published, once per version. */
+    private suspend fun checkUpdate(s: CheckerState, out: MutableList<AppNotification>, now: Long): CheckerState {
+        val latest = AppUpdater.fetchLatest()
+        if (!NotificationRules.shouldAnnounceUpdate(BuildConfig.VERSION_CODE, latest.versionCode, s.updateNotified)) return s
+        // The first run of a source only records a baseline and reports nothing, so wait for the next one
+        if ("update" !in s.baselined) return s
+        val headline = latest.notes.ifBlank { latest.changesSince(BuildConfig.VERSION_NAME).firstOrNull()?.changes?.firstOrNull()?.title.orEmpty() }
+        out += AppNotification(
+            id = "update-${latest.versionCode}",
+            category = NotificationCategory.Updates,
+            title = "BeamOps ${latest.versionName} is available",
+            body = listOf("Open the app and tap Update now.", headline).filter { it.isNotBlank() }.joinToString(" "),
+            time = now,
+            link = Links.FEED,
+        )
+        return s.copy(updateNotified = latest.versionCode)
     }
 
     /** Tells a technician when a job lands on them, with what the customer already has. */

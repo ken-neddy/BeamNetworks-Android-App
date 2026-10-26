@@ -93,6 +93,7 @@ class Notifier(private val context: Context) {
         NotificationCategory.Billing -> "$count Beam account alerts"
         NotificationCategory.Stock -> "$count products running low"
         NotificationCategory.Jobs -> "$count jobs assigned to you"
+        NotificationCategory.Updates -> "$count app updates"
     }
 
     @Suppress("MissingPermission")

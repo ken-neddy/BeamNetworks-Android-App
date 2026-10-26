@@ -77,6 +77,7 @@ fun NotificationCategory.icon() = when (this) {
     NotificationCategory.Billing -> BeamIcons.Link
     NotificationCategory.Stock -> BeamIcons.Package
     NotificationCategory.Jobs -> BeamIcons.Wrench
+    NotificationCategory.Updates -> BeamIcons.Refresh
 }
 
 fun NotificationCategory.tone(): TonePair = when (this) {
@@ -88,6 +89,7 @@ fun NotificationCategory.tone(): TonePair = when (this) {
     NotificationCategory.Billing -> Tones.Teal
     NotificationCategory.Stock -> Tones.Blue
     NotificationCategory.Jobs -> Tones.Orange
+    NotificationCategory.Updates -> Tones.Purple
 }
 
 class NotificationsViewModel(private val app: AppContainer) : ViewModel() {

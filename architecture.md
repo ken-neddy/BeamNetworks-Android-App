@@ -148,7 +148,7 @@ pill tabs, form fields, sheets, badges, toasts). Screens use these rather than r
 
 - **Alerts.** `NotificationWorker` runs every 15 minutes (and the app also checks every minute
   while open). `NotificationChecker` runs sources (routers, downtime, outages, monitoring alerts,
-  payments, suspensions, tickets, Beam account, SMS/PayHero balances, stock, jobs assigned to me),
+  payments, suspensions, tickets, Beam account, SMS/PayHero balances, stock, jobs assigned to me, and a new BeamOps version on the download site, announced once per `versionCode`),
   remembers what it has already reported in `CheckerState`, and the first run of each source only
   records a baseline. New events go to `NotificationFeed` (last 200, stored on disk) and
   `Notifier` (system notifications, one channel per `NotificationCategory`). Each category can be

@@ -30,6 +30,7 @@ enum class NotificationCategory(
     Billing("beam_billing", "Beam account and balances", "Your Beam subscription, and low SMS or PayHero balances", NotificationManager.IMPORTANCE_HIGH),
     Stock("beam_stock", "Low stock", "A product drops to its reorder level", NotificationManager.IMPORTANCE_LOW),
     Jobs("beam_jobs", "Jobs assigned to you", "An installation or visit is assigned to you", NotificationManager.IMPORTANCE_HIGH),
+    Updates("beam_updates", "App updates", "A new version of BeamOps is ready to install", NotificationManager.IMPORTANCE_DEFAULT),
 }
 
 /** One event in the in-app feed (and, usually, a system notification). */
