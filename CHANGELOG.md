@@ -9,7 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- **Download page.** The logo is smaller and centred, with the name and tagline centred under it. {2026-10-26 09:36}
+- **Download page.** The logo is smaller and centred, with the name and tagline centred under it. A new orange "Google Play Protect may block this app" box explains why Play Protect may warn about the app, lists the sensitive permissions it asks for and why, and says what to tap to install anyway. {2026-10-26 09:49}
 - **Version in the file name.** The downloaded app file is named with its version again, for example BeamOps-1.2.apk. The name under the icon on the phone stays BeamOps. {2026-10-26 09:36}
 
 ### Removed

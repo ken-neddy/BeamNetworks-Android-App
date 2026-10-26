@@ -7,8 +7,8 @@
 <title>BeamOps</title>
 <link rel="icon" href="logo.png">
 <style>
-  :root { --navy:#2E449C; --orange:#F26223; --ink:#111318; --muted:#5B616B; --bg:#F3F4F6; --card:#fff; --line:#E3E5E9; }
-  @media (prefers-color-scheme: dark) { :root { --ink:#F2F3F5; --muted:#A3A9B3; --bg:#0F1115; --card:#181B21; --line:#2A2E36; } }
+  :root { --navy:#2E449C; --orange:#F26223; --ink:#111318; --muted:#5B616B; --bg:#F3F4F6; --card:#fff; --line:#E3E5E9; --warn-bg:#FFF1E8; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#F2F3F5; --muted:#A3A9B3; --bg:#0F1115; --card:#181B21; --line:#2A2E36; --warn-bg:#2E1B10; } }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
   main { max-width:520px; margin:0 auto; padding:32px 16px 48px; }
@@ -24,6 +24,9 @@
   .notes { white-space:pre-line; margin:0; }
   #qr { display:flex; justify-content:center; margin-top:12px; } #qr img, #qr canvas { border-radius:8px; background:#fff; padding:8px; }
   .small { color:var(--muted); font-size:13px; }
+  .warn { background:var(--warn-bg); border:2px solid var(--orange); }
+  .warn h2 { color:var(--orange); font-size:18px; }
+  .warn ul { margin:8px 0 0; padding-left:20px; } .warn li { margin:4px 0; }
 </style>
 </head>
 <body>
@@ -35,6 +38,21 @@
   <div class="card">
     <a class="btn" href="{{APK}}" download>Download BeamOps {{VERSION}}</a>
     <p class="meta">Android app (APK) &middot; {{SIZE}} &middot; released {{DATE}}</p>
+  </div>
+
+  <div class="card warn">
+    <h2>&#9888; Google Play Protect may block this app</h2>
+    <p style="margin:0">Android's Play Protect may warn you, or block the install, because BeamOps isn't on the Play Store and asks for sensitive permissions. This is expected for a staff app and doesn't mean something is wrong. These are the permissions it asks for, and why:</p>
+    <ul>
+      <li><b>Call log and phone status:</b> to show who is calling (caller ID) and to pick a number from recent calls.</li>
+      <li><b>Show over other apps:</b> so the caller ID pop-up can appear on top of an incoming call.</li>
+      <li><b>Location:</b> to pin a customer's position on the map.</li>
+      <li><b>Install updates:</b> so the app can update itself.</li>
+      <li><b>Run in the background (battery):</b> so alerts arrive on time.</li>
+      <li><b>Notifications:</b> to alert you about outages, payments and jobs.</li>
+    </ul>
+    <p style="margin:10px 0 0">BeamOps can't place calls by itself and doesn't read your text messages or contacts.</p>
+    <p style="margin:10px 0 0"><b>If Play Protect blocks it:</b> tap <b>More details</b>, then <b>Install anyway</b>. If there is no <b>Install anyway</b> option, ask us before changing any Play Protect setting.</p>
   </div>
 
   <div class="card" style="{{NOTES_STYLE}}">
