@@ -77,7 +77,6 @@ fun SheetHost(vm: SheetViewModel, onDeleteExpense: (String) -> Unit) {
                 FormField(
                     "Amount (Ksh)", d.amount, { v -> vm.edit { copy(amount = v) } },
                     placeholder = "0.00", keyboardType = KeyboardType.Decimal, large = true,
-                    trailingIcon = BeamIcons.MessageSquare, trailingLabel = "Pick from M-Pesa SMS", onTrailing = { vm.openPicker(Picker.Sms) },
                 )
                 FormField("M‑Pesa reference (optional)", d.reference, { v -> vm.edit { copy(reference = v.uppercase()) } }, placeholder = "e.g. SJK4X1P9QA")
             }
@@ -88,7 +87,6 @@ fun SheetHost(vm: SheetViewModel, onDeleteExpense: (String) -> Unit) {
                 FormField(
                     "Amount (Ksh)", d.amount, { v -> vm.edit { copy(amount = v) } },
                     placeholder = "0.00", keyboardType = KeyboardType.Decimal, large = true,
-                    trailingIcon = BeamIcons.MessageSquare, trailingLabel = "Fill from an M-Pesa message", onTrailing = { vm.openPicker(Picker.Sms) },
                 )
                 FormField("Paid to (shop or person)", d.shop, { v -> vm.edit { copy(shop = v) } }, placeholder = "e.g. Faiba Optics")
                 FormField("Item", d.title, { v -> vm.edit { copy(title = v) } }, placeholder = "e.g. Fibre cable, fuel")

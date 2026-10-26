@@ -451,7 +451,7 @@ class AccountsViewModel(private val app: AppContainer) : ViewModel() {
 }
 
 @Composable
-fun AccountsScreen(onEditExpense: (String) -> Unit, onExpenseFromMpesa: () -> Unit) {
+fun AccountsScreen(onEditExpense: (String) -> Unit) {
     val vm = containerViewModel { app, _ -> AccountsViewModel(app) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val isThisMonth = ui.month == YearMonth.now(zone)
@@ -521,9 +521,6 @@ fun AccountsScreen(onEditExpense: (String) -> Unit, onExpenseFromMpesa: () -> Un
             MoneyTab.Pending -> pendingSection(money) { sheet = it }
             MoneyTab.Report -> reportSection(money)
             MoneyTab.Ledger -> Unit
-        }
-        if (tab == MoneyTab.Ledger && ui.segment == LedgerSegment.Expenses) item {
-            SecondaryButton("Log an expense from an M‑Pesa message", onExpenseFromMpesa, Modifier.padding(bottom = 12.dp), height = 48.dp, bold = true)
         }
         if (tab == MoneyTab.Ledger) item {
             ListCard {

@@ -5,13 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Beam OPS</title>
+<link rel="icon" href="logo.png">
 <style>
   :root { --navy:#2E449C; --orange:#F26223; --ink:#111318; --muted:#5B616B; --bg:#F3F4F6; --card:#fff; --line:#E3E5E9; }
   @media (prefers-color-scheme: dark) { :root { --ink:#F2F3F5; --muted:#A3A9B3; --bg:#0F1115; --card:#181B21; --line:#2A2E36; } }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
   main { max-width:520px; margin:0 auto; padding:32px 16px 48px; }
-  .mark { width:56px; height:56px; border-radius:16px; background:var(--navy); color:#fff; display:grid; place-items:center; font-weight:800; font-size:20px; }
+  .mark { width:72px; height:72px; border-radius:18px; background:#fff; border:1px solid var(--line); overflow:hidden; display:block; }
+  .mark img { width:100%; height:100%; object-fit:cover; transform:scale(1.45); }
   h1 { margin:16px 0 4px; font-size:28px; letter-spacing:-.01em; }
   .sub { margin:0; color:var(--muted); }
   .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; margin-top:20px; }
@@ -26,7 +28,7 @@
 </head>
 <body>
 <main>
-  <div class="mark">BN</div>
+  <div class="mark"><img src="logo.png" alt="Beam Networks logo"></div>
   <h1>Beam OPS</h1>
   <p class="sub">The Beam Networks staff app for Android</p>
 

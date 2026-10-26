@@ -42,7 +42,7 @@ sealed interface SheetType {
 enum class SheetDestination { Installs, Tickets, Accounts, Stock, Customers }
 
 /** Older full-screen pickers a sheet can open; their results land back in the draft. */
-enum class Picker { CallLog, Map, Sms }
+enum class Picker { CallLog, Map }
 
 val ExpenseCategories = listOf("Transport", "Equipment", "Bandwidth", "Other")
 
@@ -263,12 +263,6 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
             else draft.copy(name = draft.name.ifBlank { name }, customerText = draft.customerText.ifBlank { name })
         }
         results["picked_location"]?.let { draft = draft.copy(location = it) }
-        results["picked_amount"]?.let { draft = draft.copy(amount = it) }
-        results["picked_code"]?.let { draft = draft.copy(reference = it) }
-        if (parked is SheetType.Expense) {
-            results["picked_paid_to"]?.let { draft = draft.copy(shop = it) }
-            results["picked_date"]?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.let { draft = draft.copy(date = it) }
-        }
         sheet = parked
     }
 

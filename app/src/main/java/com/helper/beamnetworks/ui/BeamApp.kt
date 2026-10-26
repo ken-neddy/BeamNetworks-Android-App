@@ -27,7 +27,6 @@ import androidx.navigation.toRoute
 import com.helper.beamnetworks.BeamNetworksApplication
 import com.helper.beamnetworks.CallLogScreen
 import com.helper.beamnetworks.MapScreen
-import com.helper.beamnetworks.MessagePickerScreen
 import com.helper.beamnetworks.data.AppContainer
 import com.helper.beamnetworks.ui.components.BeamBottomBar
 import com.helper.beamnetworks.ui.components.BeamToast
@@ -42,7 +41,6 @@ import com.helper.beamnetworks.ui.navigation.HomeRoute
 import com.helper.beamnetworks.ui.navigation.InstallDetailRoute
 import com.helper.beamnetworks.ui.navigation.InstallsRoute
 import com.helper.beamnetworks.ui.navigation.MapRoute
-import com.helper.beamnetworks.ui.navigation.MessagePickerRoute
 import com.helper.beamnetworks.ui.navigation.NetworkRoute
 import com.helper.beamnetworks.ui.navigation.NotificationSettingsRoute
 import com.helper.beamnetworks.ui.navigation.NotificationsRoute
@@ -123,7 +121,7 @@ fun BeamApp() {
     }
 }
 
-private val PickerKeys = listOf("selected_phone_number", "selected_client_name", "picked_location", "picked_amount", "picked_paid_to", "picked_code", "picked_date")
+private val PickerKeys = listOf("selected_phone_number", "selected_client_name", "picked_location")
 
 @Composable
 private fun BeamShell(app: AppContainer) {
@@ -140,7 +138,7 @@ private fun BeamShell(app: AppContainer) {
     val hasUnread = feed.any { it.time > lastRead }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
 
-    val isPicker = destination.isAny(CallLogRoute::class, MapRoute::class, MessagePickerRoute::class)
+    val isPicker = destination.isAny(CallLogRoute::class, MapRoute::class)
     // Detail screens get a back button; everything reachable from the menu gets the menu button
     val isSub = destination.isAny(CustomerDetailRoute::class, InstallDetailRoute::class, TicketDetailRoute::class, NotificationSettingsRoute::class)
     val drawer = rememberDrawerState(DrawerValue.Closed)
@@ -235,7 +233,6 @@ private fun BeamShell(app: AppContainer) {
                     when (picker) {
                         Picker.CallLog -> CallLogRoute
                         Picker.Map -> MapRoute
-                        Picker.Sms -> MessagePickerRoute
                     },
                 )
             }
@@ -354,13 +351,7 @@ private fun BeamShell(app: AppContainer) {
                     AnnouncementsScreen()
                 }
                 composable<AccountsRoute> {
-                    AccountsScreen(
-                        onEditExpense = { sheets.open(SheetType.Expense(it)) },
-                        onExpenseFromMpesa = {
-                            sheets.open(SheetType.Expense())
-                            sheets.openPicker(Picker.Sms)
-                        },
-                    )
+                    AccountsScreen { sheets.open(SheetType.Expense(it)) }
                 }
                 composable<PaymentsRoute> { PaymentsScreen { nav.navigate(CustomerDetailRoute(it)) } }
                 composable<InvoicesRoute> { InvoicesScreen { nav.navigate(CustomerDetailRoute(it)) } }
@@ -374,7 +365,6 @@ private fun BeamShell(app: AppContainer) {
                 }
                 composable<CallLogRoute> { CallLogScreen(nav) }
                 composable<MapRoute> { MapScreen(nav) }
-                composable<MessagePickerRoute> { MessagePickerScreen(nav) }
             }
             if (sheets.sheet == null) BeamToast(toast, Modifier.align(Alignment.BottomCenter), bottom = 20.dp)
         }

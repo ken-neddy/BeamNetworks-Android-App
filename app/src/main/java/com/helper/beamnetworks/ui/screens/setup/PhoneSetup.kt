@@ -117,16 +117,6 @@ private val steps: List<SetupStep> = listOfNotNull(
         granted = ::ignoresBatteryLimits,
     ),
     SetupStep(
-        key = "sms",
-        icon = BeamIcons.MessageSquare, tone = Tones.Green,
-        title = "M-Pesa messages",
-        why = "So the app can read your M-Pesa SMS and fill in payments and expenses for you. Messages are read on this phone only.",
-        uses = listOf("Fill a payment's amount and M-Pesa code from a message", "Log an expense from a message: amount, who was paid and the date"),
-        allowLabel = "Allow SMS access",
-        permissions = listOf(Manifest.permission.READ_SMS),
-        granted = { has(it, Manifest.permission.READ_SMS) },
-    ),
-    SetupStep(
         key = "sendsms",
         icon = BeamIcons.Send, tone = Tones.Teal,
         title = "Text technicians",

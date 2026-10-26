@@ -48,6 +48,7 @@ $page = $page.Replace('{{APK}}', (& $encode $apkName)).Replace('{{VERSION}}', (&
 $page = $page.Replace('{{DATE}}', (Get-Date -Format 'd MMM yyyy')).Replace('{{NOTES}}', (& $encode $Notes))
 $page = $page.Replace('{{NOTES_STYLE}}', $(if ($Notes) { '' } else { 'display:none' }))
 Write-Utf8 (Join-Path $folder 'index.html') $page
+Copy-Item (Join-Path $root 'app/src/main/res/drawable-nodpi/beam_logo.png') (Join-Path $folder 'logo.png') -Force
 
 # release-site gets its own Vercel project link; otherwise the CLI finds the repo's .vercel (the changelog project)
 # and deploys the whole repo to the changelog site instead

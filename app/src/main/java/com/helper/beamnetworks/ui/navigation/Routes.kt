@@ -29,7 +29,6 @@ import kotlinx.serialization.Serializable
 // back-stack entry's SavedStateHandle.
 @Serializable data object CallLogRoute
 @Serializable data object MapRoute
-@Serializable data object MessagePickerRoute
 
 /** Creates a ViewModel that gets the app's [AppContainer] and its SavedStateHandle. */
 @Composable
