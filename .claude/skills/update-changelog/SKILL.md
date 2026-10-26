@@ -7,8 +7,8 @@ description: Update CHANGELOG.md and publish it to the public Vercel page whenev
 
 `CHANGELOG.md` (repo root) is the source. It is published at
 **https://beam-networks-changelog.vercel.app** (raw text: `/CHANGELOG.md`).
-Vercel builds the page from the repo on every push that touches `CHANGELOG.md`,
-`changelog-site/` or `vercel.json` (see `vercel.json`; other pushes are skipped on purpose).
+Pushing does not update it: the page is deployed by hand with the Vercel CLI (see step 4 and
+`deployment.md` section 3.6). Git pushes only create Vercel Preview builds.
 
 Do this every time app behaviour changes. A change is not finished until its changelog entry is pushed.
 
@@ -48,18 +48,15 @@ Do not bump the version yourself unless the user asked for a release.
 
 ## 4. Publish and check
 
-Pushing is the publish step: Vercel builds on push.
+Pushing does not publish the page. Deploy it by hand, from the repo root, then check it.
 
-1. Wait about a minute, then check the live text contains the new entry:
+1. Deploy it (PowerShell, from the repo root; Claude cannot run this itself, so give the user the command):
+   ```
+   Copy-Item CHANGELOG.md changelog-site/CHANGELOG.md; Set-Location changelog-site; npx.cmd vercel deploy --prod --yes; Set-Location ..
+   ```
+2. Check the live text contains the new entry:
    `curl -s https://beam-networks-changelog.vercel.app/CHANGELOG.md | head -30`
-2. If it is still the old text, the GitHub link on the Vercel project is probably missing.
-   Deploy by hand instead, from the repo root, then say so to the user:
-   ```
-   cp CHANGELOG.md changelog-site/CHANGELOG.md
-   cd changelog-site
-   npx.cmd vercel deploy --prod --yes
-   ```
-3. Tell the user the page is updated (or that it needs the manual deploy and why).
+3. Tell the user the page is updated, or that it still needs the deploy.
 
 ## Gotchas on this machine
 

@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Developer documentation.** Two new guides in the project: architecture.md (how the app is built) and deployment.md (how to ship a release to staff phones). Both are kept up to date with every change, and the project rules say so. The changelog instructions no longer claim the changelog page updates on push. {2026-10-26 10:48}
+
 ## [1.4] - 2026-10-26
 
 ### Added
