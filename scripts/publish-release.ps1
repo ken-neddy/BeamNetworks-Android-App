@@ -3,8 +3,12 @@
 # Only the release-site folder is uploaded (APK + version.json), never the app source. It lives in its own
 # Vercel project (beam-ops-downloads) so changelog deploys can't remove the APK.
 # First time: run `npx.cmd vercel login`, then this script (it creates the Vercel project).
+# The upload is sent as one archive (--archive=tgz), because Vercel's file-by-file upload kept aborting on the large APK.
 param([string]$Notes = '')
 $ErrorActionPreference = 'Stop'
+
+# Windows PowerShell 5.1 adds a byte-order mark with -Encoding UTF8, which Vercel and the app's JSON reader reject
+function Write-Utf8($path, $text) { [System.IO.File]::WriteAllText($path, $text, (New-Object System.Text.UTF8Encoding($false))) }
 $root = Split-Path -Parent $PSScriptRoot
 $gradle = Get-Content (Join-Path $root 'app\build.gradle.kts') -Raw
 
@@ -29,11 +33,12 @@ Copy-Item $built (Join-Path $folder $apkName) -Force
 $sha = (Get-FileHash (Join-Path $folder $apkName) -Algorithm SHA256).Hash.ToLower()
 
 $info = [ordered]@{ versionCode = $versionCode; versionName = $versionName; apk = $apkName; sha256 = $sha; notes = $Notes }
-$info | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $folder 'version.json')
-@'
+Write-Utf8 (Join-Path $folder 'version.json') ($info | ConvertTo-Json)
+$vercelJson = @'
 { "cleanUrls": true, "headers": [ { "source": "/(.*)", "headers": [ { "key": "Cache-Control", "value": "no-cache" }, { "key": "X-Robots-Tag", "value": "noindex" } ] } ] }
-'@ | Set-Content -Encoding UTF8 (Join-Path $site 'vercel.json')
-'<!doctype html><title>Beam OPS</title>' | Set-Content -Encoding UTF8 (Join-Path $site 'index.html')
+'@
+Write-Utf8 (Join-Path $site 'vercel.json') $vercelJson
+Write-Utf8 (Join-Path $site 'index.html') '<!doctype html><title>Beam OPS</title>'
 
 # The page to send to people: <UPDATE_BASE_URL> itself, with a Download button, install steps and a QR code
 $size = '{0:N0} MB' -f ((Get-Item (Join-Path $folder $apkName)).Length / 1MB)
@@ -42,9 +47,22 @@ $encode = { param($s) [System.Net.WebUtility]::HtmlEncode($s) }
 $page = $page.Replace('{{APK}}', (& $encode $apkName)).Replace('{{VERSION}}', (& $encode $versionName)).Replace('{{SIZE}}', $size)
 $page = $page.Replace('{{DATE}}', (Get-Date -Format 'd MMM yyyy')).Replace('{{NOTES}}', (& $encode $Notes))
 $page = $page.Replace('{{NOTES_STYLE}}', $(if ($Notes) { '' } else { 'display:none' }))
-$page | Set-Content -Encoding UTF8 (Join-Path $folder 'index.html')
+Write-Utf8 (Join-Path $folder 'index.html') $page
+
+# release-site gets its own Vercel project link; otherwise the CLI finds the repo's .vercel (the changelog project)
+# and deploys the whole repo to the changelog site instead
+if (-not (Test-Path (Join-Path $site '.vercel\project.json'))) {
+    Push-Location $site
+    try {
+        npx.cmd --yes vercel link --yes --project beam-ops-downloads
+        if ($LASTEXITCODE -ne 0) { throw 'Could not link or create the beam-ops-downloads Vercel project.' }
+    } finally { Pop-Location }
+}
 
 Push-Location $site
-try { npx.cmd --yes vercel deploy --prod --yes } finally { Pop-Location }
+try {
+    npx.cmd --yes vercel deploy --prod --yes --archive=tgz
+    if ($LASTEXITCODE -ne 0) { throw "The Vercel deploy failed, so nothing new was published." }
+} finally { Pop-Location }
 Write-Host "Published Beam OPS $versionName (code $versionCode). Phones will offer it the next time they open the app."
 Write-Host "Send people this page: $baseUrl"
