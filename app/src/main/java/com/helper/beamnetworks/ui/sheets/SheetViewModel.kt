@@ -380,10 +380,13 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
                     type = d.jobType, priority = d.priority,
                 )
                 run {
-                    val previousTechnician = type.editId?.let { app.jobs.byId(it)?.technicianId }
-                    val job = if (type.editId == null) app.jobs.schedule(jobDraft) else app.jobs.update(type.editId, jobDraft)
-                    val texted = textTechnician(job, previousTechnician)
-                    if (type.editId == null) done("${d.jobType.label} scheduled$texted", SheetDestination.Installs) else done("Job updated$texted")
+                    if (type.editId == null) {
+                        app.jobs.schedule(jobDraft)
+                        done("${d.jobType.label} scheduled", SheetDestination.Installs)
+                    } else {
+                        app.jobs.update(type.editId, jobDraft)
+                        done("Job updated")
+                    }
                 }
             }
             is SheetType.Ticket -> {
@@ -452,23 +455,6 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
         run {
             app.inventory.archive(item)
             done("${item.name} archived")
-        }
-    }
-
-    /**
-     * Texts a newly assigned technician the job's details; the technician's own app also raises a
-     * notification when it sees the job. Returns a suffix for the confirmation toast.
-     */
-    private fun textTechnician(job: Job, previousTechnician: Int?): String {
-        val technicianId = job.technicianId ?: return ""
-        if (technicianId == previousTechnician || technicianId == app.sessions.current?.userId) return ""
-        val technician = app.jobs.staff.items.firstOrNull { it.userId == technicianId }
-        val phone = technician?.phone.orEmpty()
-        return when {
-            phone.isBlank() -> ". ${technician?.name ?: "The technician"} has no phone number, so no SMS was sent"
-            !app.technicianAlerts.canText() -> ". Allow SMS in Settings › Phone permissions to text technicians"
-            app.technicianAlerts.text(phone, app.technicianAlerts.message(job)) -> ". ${technician?.name ?: "Technician"} was texted"
-            else -> ". The SMS to ${technician?.name ?: "the technician"} could not be sent"
         }
     }
 

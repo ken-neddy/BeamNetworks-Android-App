@@ -5,6 +5,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2] - 2026-10-26
+
+### Changed
+
+- **Download page.** The logo is smaller and centred, with the name and tagline centred under it. {2026-10-26 09:36}
+- **Version in the file name.** The downloaded app file is named with its version again, for example BeamOps-1.2.apk. The name under the icon on the phone stays BeamOps. {2026-10-26 09:36}
+
+### Removed
+
+- **Texting technicians.** The app no longer sends an SMS to a technician when a job is assigned, and the "Text technicians" permission step is gone from the phone setup. The technician still gets the notification in their own app when a job is assigned to them. {2026-10-26 09:36}
+
 ## [1.1] - 2026-10-26
 
 ### Added

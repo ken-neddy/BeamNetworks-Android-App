@@ -22,8 +22,8 @@ android {
         applicationId = "com.helper.beamnetworks"
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://billing.beamnetworks.co.ke/api/v1/\"")

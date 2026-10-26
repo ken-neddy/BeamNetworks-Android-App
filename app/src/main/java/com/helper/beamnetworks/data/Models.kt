@@ -141,7 +141,7 @@ data class Expense(
     val shop: String = "",
 )
 
-data class StaffMember(val userId: Int, val name: String, val phone: String = "")
+data class StaffMember(val userId: Int, val name: String)
 
 data class Plan(val id: Int, val name: String, val networkScope: Int?)
 

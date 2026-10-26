@@ -275,7 +275,7 @@ data class JobDraft(
 class JobRepository(private val api: BeamApi, scope: CoroutineScope) {
     val jobs = RemoteList(scope) { apiCall { fetchAllPages(maxPages = 10) { api.jobs(it) } }.map { it.toJob() } }
     val staff = RemoteList(scope) {
-        apiCall { fetchAllPages { api.staff(it) } }.filter { it.isActive && it.user != null }.map { StaffMember(it.user!!, it.name.ifBlank { it.email }, it.phone.orEmpty()) }
+        apiCall { fetchAllPages { api.staff(it) } }.filter { it.isActive && it.user != null }.map { StaffMember(it.user!!, it.name.ifBlank { it.email }) }
     }
 
     fun byId(id: Int): Job? = jobs.items.firstOrNull { it.id == id }
