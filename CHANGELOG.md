@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.5] - 2026-10-26
+
 ### Added
 
 - **Notification when an update is ready.** When a newer BeamOps is published, the phone shows a notification ("BeamOps 1.5 is available") within about 15 minutes, even when the app is closed, once per version. Tap it, then tap Update now. It can be switched off under App alerts as "App updates". {2026-10-26 11:00}
