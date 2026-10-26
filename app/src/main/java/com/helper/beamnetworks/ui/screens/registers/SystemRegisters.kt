@@ -318,7 +318,7 @@ fun SettingsScreen(onAppNotifications: () -> Unit, onSmsLog: () -> Unit) {
             val update by AppUpdater.state.collectAsStateWithLifecycle()
             ListCard(horizontalPadding = 14.dp) {
                 NavRow(
-                    BeamIcons.Refresh, Tones.Purple, "Beam OPS ${BuildConfig.VERSION_NAME}",
+                    BeamIcons.Refresh, Tones.Purple, "BeamOps ${BuildConfig.VERSION_NAME}",
                     when (val u = update) {
                         UpdateState.Checking -> "Checking for updates…"
                         UpdateState.UpToDate -> "You have the latest version"

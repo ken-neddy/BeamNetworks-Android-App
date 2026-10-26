@@ -210,7 +210,7 @@ private fun NotificationRow(n: AppNotification, unread: Boolean, busy: Boolean, 
 class NotificationSettingsViewModel(val app: AppContainer) : ViewModel() {
     val version = app.notificationSettings.version
     fun test() {
-        if (app.notifier.canPost()) app.notifier.postTest() else app.toasts.show("Notifications are turned off for Beam OPS")
+        if (app.notifier.canPost()) app.notifier.postTest() else app.toasts.show("Notifications are turned off for BeamOps")
     }
 }
 
@@ -237,7 +237,7 @@ fun NotificationSettingsScreen() {
                         IconTile(BeamIcons.Bell, Tones.Red)
                         Column(Modifier.weight(1f)) {
                             Text("Notifications are off", style = BeamType.RowTitle)
-                            Text("Tap to allow Beam OPS to notify you.", style = BeamType.Meta)
+                            Text("Tap to allow BeamOps to notify you.", style = BeamType.Meta)
                         }
                     }
                 }
@@ -281,7 +281,7 @@ fun NotificationSettingsScreen() {
         }
         item {
             Text(
-                "Beam checks every 15 minutes in the background and every minute while the app is open. On Xiaomi phones, turn on Autostart and set Battery saver to \"No restrictions\" for Beam OPS, or background checks may be paused.",
+                "Beam checks every 15 minutes in the background and every minute while the app is open. On Xiaomi phones, turn on Autostart and set Battery saver to \"No restrictions\" for BeamOps, or background checks may be paused.",
                 style = BeamType.Meta,
                 modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 12.dp),
             )

@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -74,6 +75,7 @@ fun SheetHost(vm: SheetViewModel, onDeleteExpense: (String) -> Unit) {
             SheetType.Create -> CreateMenu(vm)
             is SheetType.Payment -> {
                 CustomerField(vm, "Customer")
+                PasteMpesaButton(vm)
                 FormField(
                     "Amount (Ksh)", d.amount, { v -> vm.edit { copy(amount = v) } },
                     placeholder = "0.00", keyboardType = KeyboardType.Decimal, large = true,
@@ -84,6 +86,7 @@ fun SheetHost(vm: SheetViewModel, onDeleteExpense: (String) -> Unit) {
             is SheetType.Job -> JobFields(vm)
             is SheetType.Ticket -> TicketFields(vm)
             is SheetType.Expense -> {
+                PasteMpesaButton(vm)
                 FormField(
                     "Amount (Ksh)", d.amount, { v -> vm.edit { copy(amount = v) } },
                     placeholder = "0.00", keyboardType = KeyboardType.Decimal, large = true,
@@ -166,6 +169,13 @@ private fun CreateMenu(vm: SheetViewModel) {
             }
         }
     }
+}
+
+/** Reads a copied M-Pesa message from the clipboard and fills the form from it; needs no SMS permission. */
+@Composable
+private fun PasteMpesaButton(vm: SheetViewModel) {
+    val clipboard = LocalClipboardManager.current
+    SecondaryButton("Paste M‑Pesa message", { vm.pasteMpesa(clipboard.getText()?.text) }, height = 44.dp, bold = true)
 }
 
 /** Customer picker: type a name or phone and choose from the matches. */

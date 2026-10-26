@@ -28,7 +28,7 @@ $site = Join-Path $root 'release-site'
 $folder = Join-Path $site $token
 New-Item -ItemType Directory -Force $folder | Out-Null
 Get-ChildItem $folder -Filter *.apk | Remove-Item
-$apkName = "BeamOPS-$versionName.apk"
+$apkName = "BeamOps-$versionName.apk"
 Copy-Item $built (Join-Path $folder $apkName) -Force
 $sha = (Get-FileHash (Join-Path $folder $apkName) -Algorithm SHA256).Hash.ToLower()
 
@@ -38,7 +38,7 @@ $vercelJson = @'
 { "cleanUrls": true, "headers": [ { "source": "/(.*)", "headers": [ { "key": "Cache-Control", "value": "no-cache" }, { "key": "X-Robots-Tag", "value": "noindex" } ] } ] }
 '@
 Write-Utf8 (Join-Path $site 'vercel.json') $vercelJson
-Write-Utf8 (Join-Path $site 'index.html') '<!doctype html><title>Beam OPS</title>'
+Write-Utf8 (Join-Path $site 'index.html') '<!doctype html><title>BeamOps</title>'
 
 # The page to send to people: <UPDATE_BASE_URL> itself, with a Download button, install steps and a QR code
 $size = '{0:N0} MB' -f ((Get-Item (Join-Path $folder $apkName)).Length / 1MB)
@@ -65,5 +65,5 @@ try {
     npx.cmd --yes vercel deploy --prod --yes --archive=tgz
     if ($LASTEXITCODE -ne 0) { throw "The Vercel deploy failed, so nothing new was published." }
 } finally { Pop-Location }
-Write-Host "Published Beam OPS $versionName (code $versionCode). Phones will offer it the next time they open the app."
+Write-Host "Published BeamOps $versionName (code $versionCode). Phones will offer it the next time they open the app."
 Write-Host "Send people this page: $baseUrl"

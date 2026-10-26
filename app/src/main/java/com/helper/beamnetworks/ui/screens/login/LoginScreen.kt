@@ -107,7 +107,7 @@ fun LoginScreen() {
             ) {
                 Image(
                     painterResource(R.drawable.beam_logo),
-                    contentDescription = "Beam OPS",
+                    contentDescription = "BeamOps",
                     modifier = Modifier.fillMaxSize().graphicsLayer(scaleX = 1.05f, scaleY = 1.05f),
                 )
             }

@@ -43,7 +43,7 @@ fun UpdatePrompt() {
                 title = { Text("Update available", style = BeamType.SectionTitle) },
                 text = {
                     Column {
-                        Text("Beam OPS ${s.info.versionName} is ready to install.", style = BeamType.Body)
+                        Text("BeamOps ${s.info.versionName} is ready to install.", style = BeamType.Body)
                         if (s.info.notes.isNotBlank()) Text(s.info.notes, style = BeamType.Small, modifier = Modifier.padding(top = 8.dp))
                     }
                 },
@@ -67,8 +67,8 @@ fun UpdatePrompt() {
             title = { Text("Ready to install", style = BeamType.SectionTitle) },
             text = {
                 Text(
-                    if (canInstall) "Beam OPS ${s.info.versionName} has downloaded. Tap Install, then Update when Android asks."
-                    else "Android needs your OK to install updates from Beam OPS. Tap Continue, turn on \"Allow from this source\", then come back and tap Install.",
+                    if (canInstall) "BeamOps ${s.info.versionName} has downloaded. Tap Install, then Update when Android asks."
+                    else "Android needs your OK to install updates from BeamOps. Tap Continue, turn on \"Allow from this source\", then come back and tap Install.",
                     style = BeamType.Body,
                 )
             },

@@ -18,6 +18,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import com.helper.beamnetworks.util.kshShort
 import com.helper.beamnetworks.util.normalizePhone
+import com.helper.beamnetworks.util.parseMpesaMessage
 import com.helper.beamnetworks.util.parseAmountInput
 import com.helper.beamnetworks.util.zone
 import kotlinx.coroutines.channels.Channel
@@ -250,6 +251,20 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
         parkedSheet = sheet
         sheet = null
         _pickers.trySend(picker)
+    }
+
+    /** Fills the amount, M-Pesa code and (for expenses) who was paid and the date from a copied M-Pesa message. */
+    fun pasteMpesa(text: String?) {
+        val message = parseMpesaMessage(text.orEmpty())
+        if (message.amount == null) {
+            app.toasts.show("Copy the M-Pesa message first, then tap Paste")
+            return
+        }
+        draft = draft.copy(amount = message.amount, reference = message.code ?: draft.reference)
+        if (sheet is SheetType.Expense) {
+            draft = draft.copy(shop = message.paidTo ?: draft.shop, date = message.date ?: draft.date)
+        }
+        app.toasts.show("Filled in from the message")
     }
 
     /** Called when the screen under the sheet is visible again; [results] come from the picker. */

@@ -103,7 +103,7 @@ private val steps: List<SetupStep> = listOfNotNull(
         icon = BeamIcons.ExternalLink, tone = Tones.Blue,
         title = "Show over other apps",
         why = "Caller ID pops up on top of the incoming call screen, which Android only allows with this setting.",
-        uses = listOf("On the next screen, find Beam OPS and turn on \"Allow display over other apps\", then come back"),
+        uses = listOf("On the next screen, find BeamOps and turn on \"Allow display over other apps\", then come back"),
         allowLabel = "Open the setting",
         granted = { Settings.canDrawOverlays(it) },
     ),
@@ -130,7 +130,7 @@ private val steps: List<SetupStep> = listOfNotNull(
         key = "install",
         icon = BeamIcons.Refresh, tone = Tones.Blue,
         title = "Install app updates",
-        why = "Beam OPS isn't on the Play Store, so it updates itself. Android needs your OK before an app can install a new version of itself.",
+        why = "BeamOps isn't on the Play Store, so it updates itself. Android needs your OK before an app can install a new version of itself.",
         uses = listOf("The app tells you when a new version is ready and downloads it", "Android always asks you to confirm before anything is installed", "On the next screen, turn on \"Allow from this source\", then come back"),
         allowLabel = "Open the setting",
         granted = { it.packageManager.canRequestPackageInstalls() },
@@ -284,7 +284,7 @@ fun PhoneSetupScreen() {
             .padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
         Text("Set up this phone", style = BeamType.SectionTitle)
-        Text("Beam OPS needs a few permissions to work fully. Each one is explained before you choose.", style = BeamType.Small.copy(color = BeamColors.TextSecondary), modifier = Modifier.padding(top = 4.dp))
+        Text("BeamOps needs a few permissions to work fully. Each one is explained before you choose.", style = BeamType.Small.copy(color = BeamColors.TextSecondary), modifier = Modifier.padding(top = 4.dp))
         // Progress: one bar per step
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             planned.indices.forEach { i ->

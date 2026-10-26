@@ -129,7 +129,7 @@ object AppUpdater {
     private fun fetchApk(context: Context, info: UpdateInfo): File {
         val dir = File(context.cacheDir, "updates").apply { mkdirs() }
         dir.listFiles()?.forEach { it.delete() }
-        val target = File(dir, "BeamOPS-${info.versionName}.apk")
+        val target = File(dir, "BeamOps-${info.versionName}.apk")
         val request = Request.Builder().url(BuildConfig.UPDATE_BASE_URL + info.apk).build()
         val digest = MessageDigest.getInstance("SHA-256")
         client.newCall(request).execute().use { response ->
