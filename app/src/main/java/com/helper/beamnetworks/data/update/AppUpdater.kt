@@ -29,7 +29,29 @@ data class UpdateInfo(
     val apk: String,
     val sha256: String,
     val notes: String = "",
-)
+    /** What changed in each release, newest first. */
+    val history: List<ReleaseNotes> = emptyList(),
+) {
+    /** The releases newer than the installed version, so someone skipping versions sees every change. */
+    fun changesSince(installed: String): List<ReleaseNotes> = history.filter { compareVersions(it.version, installed) > 0 }
+}
+
+@Serializable
+data class ReleaseNotes(val version: String, val changes: List<ReleaseChange> = emptyList())
+
+@Serializable
+data class ReleaseChange(val title: String, val text: String = "")
+
+/** Compares dotted versions such as "1.10" and "1.9" numerically. */
+fun compareVersions(a: String, b: String): Int {
+    val x = a.split('.').map { it.toIntOrNull() ?: 0 }
+    val y = b.split('.').map { it.toIntOrNull() ?: 0 }
+    for (i in 0 until maxOf(x.size, y.size)) {
+        val diff = x.getOrElse(i) { 0 }.compareTo(y.getOrElse(i) { 0 })
+        if (diff != 0) return diff
+    }
+    return 0
+}
 
 sealed interface UpdateState {
     data object Idle : UpdateState

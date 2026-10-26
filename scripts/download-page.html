@@ -21,7 +21,8 @@
   .meta { margin:10px 0 0; text-align:center; color:var(--muted); font-size:13px; }
   h2 { margin:0 0 8px; font-size:16px; }
   ol { margin:0; padding-left:20px; } li { margin:6px 0; }
-  .notes { white-space:pre-line; margin:0; }
+  .card ul { margin:0; padding-left:20px; } .card ul li { margin:6px 0; }
+  details { margin:6px 0; } summary { cursor:pointer; font-weight:600; padding:4px 0; }
   #qr { display:flex; justify-content:center; margin-top:12px; } #qr img, #qr canvas { border-radius:8px; background:#fff; padding:8px; }
   .small { color:var(--muted); font-size:13px; }
   .warn { background:var(--warn-bg); border:2px solid var(--orange); }
@@ -55,9 +56,9 @@
     <p style="margin:10px 0 0"><b>If Play Protect blocks it:</b> tap <b>More details</b>, then <b>Install anyway</b>. If there is no <b>Install anyway</b> option, ask us before changing any Play Protect setting.</p>
   </div>
 
-  <div class="card" style="{{NOTES_STYLE}}">
-    <h2>What's new</h2>
-    <p class="notes">{{NOTES}}</p>
+  <div class="card">
+    <h2>What's new in {{VERSION}}</h2>
+    {{WHATS_NEW}}
   </div>
 
   <div class="card">
@@ -68,7 +69,17 @@
       <li>If Play Protect shows a warning, tap <b>More details</b> then <b>Install anyway</b>. This is normal for an app that isn't on the Play Store.</li>
       <li>Open BeamOps, sign in with your Beam staff account and follow the setup steps.</li>
     </ol>
-    <p class="small" style="margin-top:12px">Already installed? The app updates itself. Open it and tap <b>Update now</b> when it asks.</p>
+  </div>
+
+  <div class="card">
+    <h2>Already installed? How updates work</h2>
+    <ol>
+      <li>BeamOps checks for a new version each time you open it and sign in. If one is out, an <b>Update available</b> pop-up appears. It lists what's new since your version.</li>
+      <li>Tap <b>Update now</b>. The app downloads the update and checks it is intact. This can take a minute on mobile data.</li>
+      <li>Tap <b>Install</b>, then confirm in Android's own screen. The first time, Android asks you to allow BeamOps to install updates. Turn on <b>Allow from this source</b> and come back.</li>
+      <li>Tap <b>Later</b> to skip for now. It asks again the next time you open the app.</li>
+    </ol>
+    <p class="small" style="margin-top:12px">Want to check now? Open BeamOps, go to <b>Settings</b> and tap <b>App version</b>. Your data and sign-in are kept when you update.</p>
   </div>
 
   <div class="card">

@@ -5,6 +5,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.4] - 2026-10-26
+
+### Added
+
+- **What's new in updates.** The update pop-up now lists what changed, in plain language, for every version between yours and the new one, and scrolls if the list is long. It also tells you which version you have. {2026-10-26 10:37}
+- **Clearer download page.** The page lists what changed in the latest version and folds away the earlier versions. A new "How updates work" box explains the update pop-up: Update now, Install, Later, and where to check by hand in Settings. {2026-10-26 10:37}
+- **Release notes from the changelog.** Publishing a release now builds these notes from this changelog automatically, so the page and the pop-up always match it. {2026-10-26 10:37}
+
 ## [1.3] - 2026-10-26
 
 ### Changed
