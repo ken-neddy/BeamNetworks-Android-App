@@ -5,11 +5,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.3] - 2026-10-26
+
+### Changed
+
+- **Profile page.** The profile icon (top right) now opens just your profile: your name, email, phone, role and business. You can edit your name and phone, change your password, and sign out. Everything else that used to be on that page (network status, announcements, stock, accounts, sessions, call log, map and the rest) is in the side menu and Settings, where it already was. {2026-10-26 10:25}
+
 ## [1.2] - 2026-10-26
 
 ### Changed
 
-- **Profile page.** The profile icon (top right) now opens just your profile: your name, email, phone, role and business. You can edit your name and phone, change your password, and sign out. Everything else that used to be on that page (network status, announcements, stock, accounts, sessions, call log, map and the rest) is in the side menu and Settings, where it already was. {2026-10-26 09:57}
 - **Download page.** The logo is smaller and centred, with the name and tagline centred under it. A new orange "Google Play Protect may block this app" box explains why Play Protect may warn about the app, lists the sensitive permissions it asks for and why, and says what to tap to install anyway. {2026-10-26 09:49}
 - **Version in the file name.** The downloaded app file is named with its version again, for example BeamOps-1.2.apk. The name under the icon on the phone stays BeamOps. {2026-10-26 09:36}
 
