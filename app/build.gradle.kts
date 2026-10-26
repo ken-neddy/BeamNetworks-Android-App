@@ -27,6 +27,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "API_BASE_URL", "\"https://billing.beamnetworks.co.ke/api/v1/\"")
+        // Where the in-app updater looks for new versions (see scripts/publish-release.ps1)
+        buildConfigField("String", "UPDATE_BASE_URL", "\"https://beam-ops-downloads.vercel.app/4aa3ff1e44415baa5492d196/\"")
         vectorDrawables {
             useSupportLibrary = true
         }

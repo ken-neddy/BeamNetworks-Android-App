@@ -52,6 +52,9 @@ import com.helper.beamnetworks.ui.components.TwoColumns
 import com.helper.beamnetworks.ui.components.openCallerIdSettings
 import com.helper.beamnetworks.ui.components.rememberCallerIdReady
 import com.helper.beamnetworks.ui.icons.BeamIcons
+import com.helper.beamnetworks.BuildConfig
+import com.helper.beamnetworks.data.update.AppUpdater
+import com.helper.beamnetworks.data.update.UpdateState
 import com.helper.beamnetworks.ui.screens.setup.PhoneSetup
 import com.helper.beamnetworks.ui.navigation.containerViewModel
 import com.helper.beamnetworks.ui.theme.BeamColors
@@ -307,6 +310,27 @@ fun SettingsScreen(onAppNotifications: () -> Unit, onSmsLog: () -> Unit) {
                     BeamIcons.Check, Tones.Blue, "Phone permissions", if (allGranted) "Everything is allowed" else "Some are off — tap to set up",
                     { PhoneSetup.open(context) }, tileSize = 38.dp, inCard = true,
                     trailing = { Tag(if (allGranted) "All on" else "Missing", if (allGranted) Tones.Green else Tones.Orange) },
+                )
+            }
+        }
+        item { SectionHeader("App version") }
+        item {
+            val update by AppUpdater.state.collectAsStateWithLifecycle()
+            ListCard(horizontalPadding = 14.dp) {
+                NavRow(
+                    BeamIcons.Refresh, Tones.Purple, "Beam OPS ${BuildConfig.VERSION_NAME}",
+                    when (val u = update) {
+                        UpdateState.Checking -> "Checking for updates…"
+                        UpdateState.UpToDate -> "You have the latest version"
+                        is UpdateState.Available -> "Version ${u.info.versionName} is available. Tap to install"
+                        is UpdateState.Failed -> u.message
+                        else -> "Tap to check for updates"
+                    },
+                    {
+                        // Show the prompt again if "Later" was chosen, or check afresh
+                        if (update is UpdateState.Available) AppUpdater.download(context) else AppUpdater.check(silent = false)
+                    },
+                    tileSize = 38.dp, inCard = true,
                 )
             }
         }

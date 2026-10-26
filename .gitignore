@@ -26,3 +26,6 @@ changelog-site/CHANGELOG.md
 
 # Vercel build output (made on Vercel from CHANGELOG.md)
 /public/
+
+# In-app updater downloads site: built by scripts/publish-release.ps1
+/release-site/

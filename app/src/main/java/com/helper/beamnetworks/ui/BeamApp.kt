@@ -100,7 +100,9 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import com.helper.beamnetworks.data.update.AppUpdater
 import com.helper.beamnetworks.ui.screens.setup.PhoneSetup
+import com.helper.beamnetworks.ui.screens.setup.UpdatePrompt
 import com.helper.beamnetworks.ui.screens.setup.PhoneSetupScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -112,10 +114,12 @@ fun BeamApp() {
     val app = (context.applicationContext as BeamNetworksApplication).container
     val session by app.sessions.session.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { PhoneSetup.showIfNeeded(context) }
+    // Look for a new version once per launch, after sign-in
+    LaunchedEffect(session != null) { if (session != null) AppUpdater.check(silent = true) }
     // Setup sits on top, so opening it from Settings keeps the app where it was underneath
     Box(Modifier.fillMaxSize()) {
         if (session == null) LoginScreen() else BeamShell(app)
-        if (PhoneSetup.visible) PhoneSetupScreen()
+        if (PhoneSetup.visible) PhoneSetupScreen() else UpdatePrompt()
     }
 }
 

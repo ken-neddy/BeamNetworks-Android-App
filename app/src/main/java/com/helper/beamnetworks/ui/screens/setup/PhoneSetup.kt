@@ -46,6 +46,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import com.helper.beamnetworks.data.update.AppUpdater
 import com.helper.beamnetworks.ui.components.BeamCard
 import com.helper.beamnetworks.ui.components.IconTile
 import com.helper.beamnetworks.ui.components.PrimaryButton
@@ -134,6 +135,15 @@ private val steps: List<SetupStep> = listOfNotNull(
         allowLabel = "Allow sending SMS",
         permissions = listOf(Manifest.permission.SEND_SMS),
         granted = { has(it, Manifest.permission.SEND_SMS) },
+    ),
+    SetupStep(
+        key = "install",
+        icon = BeamIcons.Refresh, tone = Tones.Blue,
+        title = "Install app updates",
+        why = "Beam OPS isn't on the Play Store, so it updates itself. Android needs your OK before an app can install a new version of itself.",
+        uses = listOf("The app tells you when a new version is ready and downloads it", "Android always asks you to confirm before anything is installed", "On the next screen, turn on \"Allow from this source\", then come back"),
+        allowLabel = "Open the setting",
+        granted = { it.packageManager.canRequestPackageInstalls() },
     ),
     SetupStep(
         key = "location",
@@ -318,6 +328,10 @@ fun PhoneSetupScreen() {
                     "overlay" -> {
                         waitingOnSettings = step.key
                         openOverlaySetting(context)
+                    }
+                    "install" -> {
+                        waitingOnSettings = step.key
+                        AppUpdater.openInstallPermission(context)
                     }
                     "battery" -> {
                         waitingOnSettings = step.key

@@ -2,4 +2,5 @@
 <!-- Invoice PDFs shared from customer details -->
 <paths>
     <cache-path name="invoices" path="invoices/" />
+    <cache-path name="updates" path="updates/" />
 </paths>
