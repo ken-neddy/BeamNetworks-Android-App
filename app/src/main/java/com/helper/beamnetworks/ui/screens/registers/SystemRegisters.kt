@@ -52,6 +52,7 @@ import com.helper.beamnetworks.ui.components.TwoColumns
 import com.helper.beamnetworks.ui.components.openCallerIdSettings
 import com.helper.beamnetworks.ui.components.rememberCallerIdReady
 import com.helper.beamnetworks.ui.icons.BeamIcons
+import com.helper.beamnetworks.ui.screens.setup.PhoneSetup
 import com.helper.beamnetworks.ui.navigation.containerViewModel
 import com.helper.beamnetworks.ui.theme.BeamColors
 import com.helper.beamnetworks.ui.theme.BeamType
@@ -276,19 +277,6 @@ fun SettingsScreen(onAppNotifications: () -> Unit, onSmsLog: () -> Unit) {
     val callerIdReady = rememberCallerIdReady()
     LaunchedEffect(Unit) { if (vm.settings == null) vm.load() }
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp), modifier = Modifier.fillMaxSize()) {
-        // This phone
-        item { SectionHeader("This phone") }
-        item {
-            ListCard(horizontalPadding = 14.dp) {
-                NavRow(BeamIcons.Bell, Tones.Orange, "App alerts", "Which notifications this phone shows", onAppNotifications, tileSize = 38.dp, inCard = true)
-                BeamDivider()
-                NavRow(
-                    BeamIcons.Phone, Tones.Teal, "Caller ID popup", if (callerIdReady) "On — shows who is calling" else "Off — tap to allow",
-                    { openCallerIdSettings(context) }, tileSize = 38.dp, inCard = true,
-                    trailing = { Tag(if (callerIdReady) "On" else "Off", if (callerIdReady) Tones.Green else Tones.Orange) },
-                )
-            }
-        }
         if (vm.smsBalance != null || vm.payheroBalance != null) {
             item { SectionHeader("Balances") }
             item {
@@ -300,6 +288,26 @@ fun SettingsScreen(onAppNotifications: () -> Unit, onSmsLog: () -> Unit) {
                         }
                     }
                 }
+            }
+        }
+        // This phone
+        item { SectionHeader("This phone") }
+        item {
+            ListCard(horizontalPadding = 14.dp) {
+                NavRow(BeamIcons.Bell, Tones.Orange, "App alerts", "Which notifications this phone shows", onAppNotifications, tileSize = 38.dp, inCard = true)
+                BeamDivider()
+                NavRow(
+                    BeamIcons.Phone, Tones.Teal, "Caller ID popup", if (callerIdReady) "On — shows who is calling" else "Off — tap to allow",
+                    { openCallerIdSettings(context) }, tileSize = 38.dp, inCard = true,
+                    trailing = { Tag(if (callerIdReady) "On" else "Off", if (callerIdReady) Tones.Green else Tones.Orange) },
+                )
+                BeamDivider()
+                val allGranted = remember(callerIdReady, PhoneSetup.visible) { PhoneSetup.allGranted(context) }
+                NavRow(
+                    BeamIcons.Check, Tones.Blue, "Phone permissions", if (allGranted) "Everything is allowed" else "Some are off — tap to set up",
+                    { PhoneSetup.open(context) }, tileSize = 38.dp, inCard = true,
+                    trailing = { Tag(if (allGranted) "All on" else "Missing", if (allGranted) Tones.Green else Tones.Orange) },
+                )
             }
         }
         val s = vm.settings

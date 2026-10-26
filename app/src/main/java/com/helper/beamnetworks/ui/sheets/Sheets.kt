@@ -83,12 +83,13 @@ fun SheetHost(vm: SheetViewModel, onDeleteExpense: (String) -> Unit) {
             is SheetType.Job -> JobFields(vm)
             is SheetType.Ticket -> TicketFields(vm)
             is SheetType.Expense -> {
-                FormField("What for", d.title, { v -> vm.edit { copy(title = v) } }, placeholder = "e.g. Fuel, drop cable")
                 FormField(
                     "Amount (Ksh)", d.amount, { v -> vm.edit { copy(amount = v) } },
                     placeholder = "0.00", keyboardType = KeyboardType.Decimal, large = true,
-                    trailingIcon = BeamIcons.MessageSquare, trailingLabel = "Pick from M-Pesa SMS", onTrailing = { vm.openPicker(Picker.Sms) },
+                    trailingIcon = BeamIcons.MessageSquare, trailingLabel = "Fill from an M-Pesa message", onTrailing = { vm.openPicker(Picker.Sms) },
                 )
+                FormField("Paid to (shop or person)", d.shop, { v -> vm.edit { copy(shop = v) } }, placeholder = "e.g. Faiba Optics")
+                FormField("Item", d.title, { v -> vm.edit { copy(title = v) } }, placeholder = "e.g. Fibre cable, fuel")
                 TwoColumns(
                     { DropdownField("Category", d.category, ExpenseCategories, { v -> vm.edit { copy(category = v) } }) },
                     { DateField("Date", d.date, { v -> vm.edit { copy(date = v) } }) },
@@ -207,7 +208,10 @@ private fun NewCustomerFields(vm: SheetViewModel) {
     }
 
     FormField("Full name", d.name, { v -> vm.edit { copy(name = v) } }, placeholder = "Jane Wanjiku")
-    FormField("Phone", d.phone, { v -> vm.edit { copy(phone = v) } }, placeholder = "0712345678", keyboardType = KeyboardType.Phone)
+    FormField(
+        "Phone", d.phone, { v -> vm.edit { copy(phone = v) } }, placeholder = "0712345678", keyboardType = KeyboardType.Phone,
+        trailingIcon = BeamIcons.Phone, trailingLabel = "Pick from call log", onTrailing = { vm.openPicker(Picker.CallLog) },
+    )
     FormField("Email (optional)", d.email, { v -> vm.edit { copy(email = v) } }, placeholder = "customer@example.com", keyboardType = KeyboardType.Email)
     TwoColumns(
         {

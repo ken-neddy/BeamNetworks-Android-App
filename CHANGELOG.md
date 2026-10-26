@@ -38,6 +38,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **Notification bell moved.** The bell moved next to the account avatar (top right) to make room for the menu button. {2026-10-25 17:52}
+- **Phone setup on start-up.** When the app opens and a permission is missing, it walks you through one step at a time ("Step 2 of 6"), explaining why each is needed and what it is used for: notifications, phone and call log (caller ID and number picker), show over other apps (caller ID popup), battery, M-Pesa messages (SMS) and location. Each step can be skipped with "Not now". Steps you already answered are not asked again; Settings › This phone › Phone permissions reopens the whole walk-through and shows whether everything is on. {2026-10-26 06:14}
+- **Battery setting opens directly.** The battery step takes you straight to Android's "Allow Beam OPS to run in the background" prompt (or the closest battery page on phones that lack it), and explains that without it alerts arrive late and caller ID may not appear. {2026-10-26 06:14}
+- **Call log on Add customer.** The phone number field on the Add customer form now has a phone icon that opens the call log so you can pick a number. {2026-10-26 06:14}
+- **Expenses from M-Pesa messages.** M-Pesa messages moved from the Account screen and side menu to Income & expenses. On the Expenses tab, "Log an expense from an M-Pesa message" opens your M-Pesa SMS; pick one and the expense form fills in the amount, who was paid (the shop or person) and the date. You then add the item, for example Ksh 5,000 paid to Faiba Optics for fibre cable. The expense form now has separate "Paid to" and "Item" fields, and the expenses list shows the shop under each item. Picking an M-Pesa message for a payment also fills in its M-Pesa reference. {2026-10-26 06:05}
+- **Balances first in Settings.** The PayHero and SMS balance cards now sit at the very top of Settings, above "This phone". {2026-10-26 06:05}
 - **Customers opens on Online.** The Customers screen opens on the **Online** filter, which sits right after All in the filter list. The dashboard's Customers card still opens on All. {2026-10-26 05:57}
 - **Duplicate M-Pesa payments.** Recording a payment with an M-Pesa code first checks Beam. A code that is already recorded is not recorded again, and an unmatched paybill deposit with that code is attached to the customer instead of being duplicated as cash. {2026-10-25 17:52}
 - **App renamed to Beam OPS.** The name under the icon on the phone, and the app's own messages (for example the notification permission prompts), now say Beam OPS. Messages sent to customers still use Beam Networks. {2026-10-25 20:27}
@@ -47,6 +52,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Dashboard icon sometimes did nothing.** Tapping the first icon in the bottom bar did not always take you back to the dashboard. It now always returns to the dashboard, and tapping it while you are already there scrolls back to the top. {2026-10-26 06:14}
 - **Low balance alerts.** They never arrived, because the app couldn't read the balance figures Beam sends. They are read correctly now. {2026-10-25 18:17}
 - **Recent payments.** A customer's list was empty for anyone who had not paid this month. It now shows that customer's own payment history. {2026-10-25 17:52}
 - **Billed total.** The dashboard's "billed" total showed Ksh 0 when credit had been applied. It now counts what was billed before credit. {2026-10-25 17:52}

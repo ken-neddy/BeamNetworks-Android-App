@@ -34,6 +34,7 @@ import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import com.helper.beamnetworks.util.parseMpesaMessage
 import java.util.regex.Pattern
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
@@ -135,10 +136,12 @@ fun MessagePickerScreen(navController: NavController, viewModel: MessagePickerVi
                                     .fillMaxWidth()
                                     .padding(8.dp)
                                     .clickable {
-                                        val amount = extractAmount(message.body)
-                                        if (amount != null) {
-                                            navController.previousBackStackEntry?.savedStateHandle?.set("picked_amount", amount)
-                                        }
+                                        val parsed = parseMpesaMessage(message.body)
+                                        val handle = navController.previousBackStackEntry?.savedStateHandle
+                                        (parsed.amount ?: extractAmount(message.body))?.let { handle?.set("picked_amount", it) }
+                                        parsed.paidTo?.let { handle?.set("picked_paid_to", it) }
+                                        parsed.code?.let { handle?.set("picked_code", it) }
+                                        parsed.date?.let { handle?.set("picked_date", it.toString()) }
                                         navController.popBackStack()
                                     },
                             ) {

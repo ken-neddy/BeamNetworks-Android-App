@@ -100,18 +100,26 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import com.helper.beamnetworks.ui.screens.setup.PhoneSetup
+import com.helper.beamnetworks.ui.screens.setup.PhoneSetupScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Signs in first, then shows the redesigned app. */
+/** Walks through any missing phone permissions, signs in, then shows the redesigned app. */
 @Composable
 fun BeamApp() {
-    val app = (LocalContext.current.applicationContext as BeamNetworksApplication).container
+    val context = LocalContext.current
+    val app = (context.applicationContext as BeamNetworksApplication).container
     val session by app.sessions.session.collectAsStateWithLifecycle()
-    if (session == null) LoginScreen() else BeamShell(app)
+    LaunchedEffect(Unit) { PhoneSetup.showIfNeeded(context) }
+    // Setup sits on top, so opening it from Settings keeps the app where it was underneath
+    Box(Modifier.fillMaxSize()) {
+        if (session == null) LoginScreen() else BeamShell(app)
+        if (PhoneSetup.visible) PhoneSetupScreen()
+    }
 }
 
-private val PickerKeys = listOf("selected_phone_number", "selected_client_name", "picked_location", "picked_amount")
+private val PickerKeys = listOf("selected_phone_number", "selected_client_name", "picked_location", "picked_amount", "picked_paid_to", "picked_code", "picked_date")
 
 @Composable
 private fun BeamShell(app: AppContainer) {
@@ -181,7 +189,6 @@ private fun BeamShell(app: AppContainer) {
         MenuSection("Messages", listOf(
             MenuItem(BeamIcons.Send, Tones.Purple, "Announcements", destination.isAny(AnnouncementsRoute::class)) { menuGo(AnnouncementsRoute) },
             MenuItem(BeamIcons.MessageSquare, Tones.Teal, "SMS & email log", destination.isAny(SmsLogRoute::class)) { menuGo(SmsLogRoute) },
-            MenuItem(BeamIcons.MessageSquare, Tones.Green, "M‑Pesa messages") { menuGo(MessagePickerRoute) },
             MenuItem(BeamIcons.Phone, Tones.Teal, "Call log") { menuGo(CallLogRoute) },
         )),
         MenuSection("Stock & tools", listOf(
@@ -320,7 +327,6 @@ private fun BeamShell(app: AppContainer) {
                         onAnnouncements = { nav.navigate(AnnouncementsRoute) },
                         onCallLog = { nav.navigate(CallLogRoute) },
                         onMap = { nav.navigate(MapRoute) },
-                        onMessages = { nav.navigate(MessagePickerRoute) },
                     )
                 }
                 composable<StockRoute>(deepLinks = listOf(navDeepLink<StockRoute>(basePath = "beamnetworks://app/stock"))) { StockScreen { sheets.open(SheetType.Product(it)) } }
@@ -343,7 +349,15 @@ private fun BeamShell(app: AppContainer) {
                 composable<AnnouncementsRoute> {
                     AnnouncementsScreen()
                 }
-                composable<AccountsRoute> { AccountsScreen { sheets.open(SheetType.Expense(it)) } }
+                composable<AccountsRoute> {
+                    AccountsScreen(
+                        onEditExpense = { sheets.open(SheetType.Expense(it)) },
+                        onExpenseFromMpesa = {
+                            sheets.open(SheetType.Expense())
+                            sheets.openPicker(Picker.Sms)
+                        },
+                    )
+                }
                 composable<PaymentsRoute> { PaymentsScreen { nav.navigate(CustomerDetailRoute(it)) } }
                 composable<InvoicesRoute> { InvoicesScreen { nav.navigate(CustomerDetailRoute(it)) } }
                 composable<HotspotRoute> { HotspotScreen() }
@@ -364,6 +378,8 @@ private fun BeamShell(app: AppContainer) {
             BeamBottomBar(
                 selected = tab,
                 onSelect = { selected ->
+                    // Already on the dashboard: scroll it back to the top instead
+                    if (selected == BottomTab.Home && destination.isAny(HomeRoute::class)) scope.launch { homeList.animateScrollToItem(0) }
                     nav.goToTab(
                         when (selected) {
                             BottomTab.Home -> HomeRoute
@@ -424,6 +440,9 @@ private fun titleFor(destination: NavDestination?): String = when {
  * arriving with a new filter (e.g. "Owing" from the dashboard) so the route's arguments apply.
  */
 private fun NavHostController.goToTab(route: Any, restore: Boolean = true) {
+    // The dashboard is the start destination: navigating to it with restoreState could bring back
+    // another tab's saved stack instead, so just pop back to it (saving the tab being left)
+    if (route == HomeRoute && popBackStack<HomeRoute>(inclusive = false, saveState = true)) return
     navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = restore }
         launchSingleTop = true

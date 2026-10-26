@@ -111,7 +111,7 @@ class AccountViewModel(private val app: AppContainer) : ViewModel() {
 }
 
 @Composable
-fun AccountScreen(onNotifications: () -> Unit, onNetwork: () -> Unit, onAnnouncements: () -> Unit, onStock: () -> Unit, onAccounts: () -> Unit, onSessions: () -> Unit, onCallLog: () -> Unit, onMap: () -> Unit, onMessages: () -> Unit) {
+fun AccountScreen(onNotifications: () -> Unit, onNetwork: () -> Unit, onAnnouncements: () -> Unit, onStock: () -> Unit, onAccounts: () -> Unit, onSessions: () -> Unit, onCallLog: () -> Unit, onMap: () -> Unit) {
     val vm = containerViewModel { app, _ -> AccountViewModel(app) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -159,7 +159,6 @@ fun AccountScreen(onNotifications: () -> Unit, onNetwork: () -> Unit, onAnnounce
                         )
                     },
                     { NavRow(BeamIcons.MapPin, Tones.Red, "Map", "Find and share a location", onMap, tileSize = 38.dp, inCard = true, trailing = {}) },
-                    { NavRow(BeamIcons.MessageSquare, Tones.Green, "M‑Pesa messages", "Payment SMS on this phone", onMessages, tileSize = 38.dp, inCard = true, trailing = {}) },
                 )
                 rows.forEachIndexed { i, row ->
                     row()
@@ -428,7 +427,7 @@ class AccountsViewModel(private val app: AppContainer) : ViewModel() {
                     LedgerRow("p${p.id}", p.customerName.ifBlank { "—" }, paymentSource(p), "+" + kshShort(p.amount), shortDate(p.date?.toLocalDate()), true, null)
                 }
             } else {
-                monthExpenses.map { e -> LedgerRow("e${e.id}", e.title, e.category, "−" + kshShort(e.amount), shortDate(e.date), false, e.id) }
+                monthExpenses.map { e -> LedgerRow("e${e.id}", e.title, listOf(e.shop, e.category).filter { it.isNotBlank() }.joinToString(" · "),"−" + kshShort(e.amount), shortDate(e.date), false, e.id) }
             },
             loading = payments.loading,
             error = payments.error,
@@ -452,7 +451,7 @@ class AccountsViewModel(private val app: AppContainer) : ViewModel() {
 }
 
 @Composable
-fun AccountsScreen(onEditExpense: (String) -> Unit) {
+fun AccountsScreen(onEditExpense: (String) -> Unit, onExpenseFromMpesa: () -> Unit) {
     val vm = containerViewModel { app, _ -> AccountsViewModel(app) }
     val ui by vm.ui.collectAsStateWithLifecycle()
     val isThisMonth = ui.month == YearMonth.now(zone)
@@ -522,6 +521,9 @@ fun AccountsScreen(onEditExpense: (String) -> Unit) {
             MoneyTab.Pending -> pendingSection(money) { sheet = it }
             MoneyTab.Report -> reportSection(money)
             MoneyTab.Ledger -> Unit
+        }
+        if (tab == MoneyTab.Ledger && ui.segment == LedgerSegment.Expenses) item {
+            SecondaryButton("Log an expense from an M‑Pesa message", onExpenseFromMpesa, Modifier.padding(bottom = 12.dp), height = 48.dp, bold = true)
         }
         if (tab == MoneyTab.Ledger) item {
             ListCard {

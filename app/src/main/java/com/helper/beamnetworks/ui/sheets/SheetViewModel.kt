@@ -104,6 +104,7 @@ data class Draft(
     val unitCost: String = "",
     val unitPrice: String = "",
     val title: String = "",
+    val shop: String = "",
     val category: String = ExpenseCategories.first(),
     val qty: String = "",
     val min: String = "",
@@ -261,6 +262,11 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
         }
         results["picked_location"]?.let { draft = draft.copy(location = it) }
         results["picked_amount"]?.let { draft = draft.copy(amount = it) }
+        results["picked_code"]?.let { draft = draft.copy(reference = it) }
+        if (parked is SheetType.Expense) {
+            results["picked_paid_to"]?.let { draft = draft.copy(shop = it) }
+            results["picked_date"]?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.let { draft = draft.copy(date = it) }
+        }
         sheet = parked
     }
 
@@ -287,7 +293,7 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
                 )
             } ?: Draft()
             is SheetType.Expense -> type.editId?.let { id -> app.expenses.expenses.value.items.firstOrNull { it.id == id } }?.let {
-                Draft(title = it.title, amount = com.helper.beamnetworks.util.moneyString(it.amount), category = it.category, date = it.date ?: LocalDate.now(zone), notes = it.notes)
+                Draft(title = it.title, shop = it.shop, amount = com.helper.beamnetworks.util.moneyString(it.amount), category = it.category, date = it.date ?: LocalDate.now(zone), notes = it.notes)
             } ?: Draft(date = LocalDate.now(zone))
             is SheetType.Product -> type.editId?.let { id -> app.inventory.items.items.firstOrNull { it.id == id } }?.let {
                 Draft(name = it.name, qty = it.quantity.toString(), min = it.reorderAt.toString())
@@ -381,9 +387,9 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
             }
             is SheetType.Expense -> {
                 val amount = parseAmountInput(d.amount)
-                if (d.title.isBlank() || amount == null) return fail("Add a description and amount")
+                if (d.title.isBlank() || amount == null) return fail("Add the item and amount")
                 run {
-                    app.expenses.save(type.editId, d.title, amount, d.category, d.date, d.notes)
+                    app.expenses.save(type.editId, d.title, amount, d.category, d.date, d.notes, d.shop)
                     done(if (type.editId == null) "Expense logged" else "Expense updated", if (type.editId == null) SheetDestination.Accounts else null)
                 }
             }

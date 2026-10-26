@@ -136,6 +136,8 @@ data class Expense(
     val amount: Double,
     val date: LocalDate?,
     val notes: String,
+    /** Who was paid (shop or person), often read from the M-Pesa SMS. */
+    val shop: String = "",
 )
 
 data class StaffMember(val userId: Int, val name: String)

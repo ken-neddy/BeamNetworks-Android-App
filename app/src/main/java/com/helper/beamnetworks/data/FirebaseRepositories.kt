@@ -46,13 +46,14 @@ class ExpenseRepository(scope: CoroutineScope) {
                 amount = parseMoney(child.child("amount").value?.toString()),
                 date = parseLegacyDate(child.child("date").getValue(String::class.java)),
                 notes = child.child("moreNotes").getValue(String::class.java).orEmpty(),
+                shop = child.child("shop").getValue(String::class.java).orEmpty(),
             )
         }.sortedByDescending { it.date }
         Loadable(items, loaded = true)
     }.stateIn(scope, SharingStarted.WhileSubscribed(5_000), Loadable(loading = true))
 
-    /** Writes the same fields the old screens used (amount as a string, dd/MM/yyyy date) plus category. */
-    suspend fun save(id: String?, title: String, amount: Double, category: String, date: LocalDate, notes: String) {
+    /** Writes the same fields the old screens used (amount as a string, dd/MM/yyyy date) plus category and shop. */
+    suspend fun save(id: String?, title: String, amount: Double, category: String, date: LocalDate, notes: String, shop: String) {
         val node = if (id == null) ref.push() else ref.child(id)
         node.setValue(
             mapOf(
@@ -62,6 +63,7 @@ class ExpenseRepository(scope: CoroutineScope) {
                 "date" to formatLegacyDate(date),
                 "moreNotes" to notes,
                 "category" to category,
+                "shop" to shop.trim(),
             ),
         ).await()
     }
