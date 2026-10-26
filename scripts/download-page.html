@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Beam OPS</title>
+<style>
+  :root { --navy:#2E449C; --orange:#F26223; --ink:#111318; --muted:#5B616B; --bg:#F3F4F6; --card:#fff; --line:#E3E5E9; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#F2F3F5; --muted:#A3A9B3; --bg:#0F1115; --card:#181B21; --line:#2A2E36; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  main { max-width:520px; margin:0 auto; padding:32px 16px 48px; }
+  .mark { width:56px; height:56px; border-radius:16px; background:var(--navy); color:#fff; display:grid; place-items:center; font-weight:800; font-size:20px; }
+  h1 { margin:16px 0 4px; font-size:28px; letter-spacing:-.01em; }
+  .sub { margin:0; color:var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; margin-top:20px; }
+  .btn { display:block; text-align:center; background:var(--orange); color:#fff; text-decoration:none; font-weight:700; padding:14px 16px; border-radius:12px; }
+  .meta { margin:10px 0 0; text-align:center; color:var(--muted); font-size:13px; }
+  h2 { margin:0 0 8px; font-size:16px; }
+  ol { margin:0; padding-left:20px; } li { margin:6px 0; }
+  .notes { white-space:pre-line; margin:0; }
+  #qr { display:flex; justify-content:center; margin-top:12px; } #qr img, #qr canvas { border-radius:8px; background:#fff; padding:8px; }
+  .small { color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="mark">BN</div>
+  <h1>Beam OPS</h1>
+  <p class="sub">The Beam Networks staff app for Android</p>
+
+  <div class="card">
+    <a class="btn" href="{{APK}}" download>Download Beam OPS {{VERSION}}</a>
+    <p class="meta">Android app (APK) &middot; {{SIZE}} &middot; released {{DATE}}</p>
+  </div>
+
+  <div class="card" style="{{NOTES_STYLE}}">
+    <h2>What's new</h2>
+    <p class="notes">{{NOTES}}</p>
+  </div>
+
+  <div class="card">
+    <h2>How to install</h2>
+    <ol>
+      <li>Tap <b>Download</b> and open the file when it finishes.</li>
+      <li>If Android says it can't install from this source, tap <b>Settings</b> and turn on <b>Allow from this source</b>, then go back.</li>
+      <li>If Play Protect shows a warning, tap <b>More details</b> then <b>Install anyway</b>. This is normal for an app that isn't on the Play Store.</li>
+      <li>Open Beam OPS, sign in with your Beam staff account and follow the setup steps.</li>
+    </ol>
+    <p class="small" style="margin-top:12px">Already installed? The app updates itself. Open it and tap <b>Update now</b> when it asks.</p>
+  </div>
+
+  <div class="card">
+    <h2>Open on a phone</h2>
+    <p class="small" style="margin:0">Reading this on a computer? Scan this with the phone's camera.</p>
+    <div id="qr"></div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  try { new QRCode(document.getElementById('qr'), { text: location.href.split('#')[0], width: 168, height: 168 }); }
+  catch (e) { document.getElementById('qr').parentElement.style.display = 'none'; }
+</script>
+</body>
+</html>

@@ -35,6 +35,16 @@ $info | ConvertTo-Json | Set-Content -Encoding UTF8 (Join-Path $folder 'version.
 '@ | Set-Content -Encoding UTF8 (Join-Path $site 'vercel.json')
 '<!doctype html><title>Beam OPS</title>' | Set-Content -Encoding UTF8 (Join-Path $site 'index.html')
 
+# The page to send to people: <UPDATE_BASE_URL> itself, with a Download button, install steps and a QR code
+$size = '{0:N0} MB' -f ((Get-Item (Join-Path $folder $apkName)).Length / 1MB)
+$page = Get-Content (Join-Path $PSScriptRoot 'download-page.html') -Raw
+$encode = { param($s) [System.Net.WebUtility]::HtmlEncode($s) }
+$page = $page.Replace('{{APK}}', (& $encode $apkName)).Replace('{{VERSION}}', (& $encode $versionName)).Replace('{{SIZE}}', $size)
+$page = $page.Replace('{{DATE}}', (Get-Date -Format 'd MMM yyyy')).Replace('{{NOTES}}', (& $encode $Notes))
+$page = $page.Replace('{{NOTES_STYLE}}', $(if ($Notes) { '' } else { 'display:none' }))
+$page | Set-Content -Encoding UTF8 (Join-Path $folder 'index.html')
+
 Push-Location $site
 try { npx.cmd --yes vercel deploy --prod --yes } finally { Pop-Location }
 Write-Host "Published Beam OPS $versionName (code $versionCode). Phones will offer it the next time they open the app."
+Write-Host "Send people this page: $baseUrl"
