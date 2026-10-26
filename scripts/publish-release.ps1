@@ -28,7 +28,7 @@ $site = Join-Path $root 'release-site'
 $folder = Join-Path $site $token
 New-Item -ItemType Directory -Force $folder | Out-Null
 Get-ChildItem $folder -Filter *.apk | Remove-Item
-$apkName = "BeamOps-$versionName.apk"
+$apkName = "BeamOps.apk"
 Copy-Item $built (Join-Path $folder $apkName) -Force
 $sha = (Get-FileHash (Join-Path $folder $apkName) -Algorithm SHA256).Hash.ToLower()
 

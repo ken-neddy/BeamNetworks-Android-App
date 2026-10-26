@@ -3,7 +3,9 @@
 All notable changes to the **Beam Networks** Android app are listed here, newest first.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased] - 2026-10-25
+## [Unreleased]
+
+## [1.1] - 2026-10-26
 
 ### Added
 
