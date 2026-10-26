@@ -38,7 +38,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 
 - **Notification bell moved.** The bell moved next to the account avatar (top right) to make room for the menu button. {2026-10-25 17:52}
-- **Customers opens on Online.** The Customers screen opens on the **Online** filter, which is now first in the list. The dashboard's Customers card still opens on All. {2026-10-25 17:52}
+- **Customers opens on Online.** The Customers screen opens on the **Online** filter, which sits right after All in the filter list. The dashboard's Customers card still opens on All. {2026-10-26 05:57}
 - **Duplicate M-Pesa payments.** Recording a payment with an M-Pesa code first checks Beam. A code that is already recorded is not recorded again, and an unmatched paybill deposit with that code is attached to the customer instead of being duplicated as cash. {2026-10-25 17:52}
 - **App renamed to Beam OPS.** The name under the icon on the phone, and the app's own messages (for example the notification permission prompts), now say Beam OPS. Messages sent to customers still use Beam Networks. {2026-10-25 20:27}
 - **Bigger logo on the sign-in screen.** The logo is zoomed in so the mark fills its frame instead of floating in white space. {2026-10-25 20:41}

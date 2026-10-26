@@ -48,8 +48,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
 enum class CustomerFilter(val key: String, val label: String, val test: (Customer) -> Boolean) {
-    Online("online", "Online", { it.online }),
     All("all", "All", { true }),
+    Online("online", "Online", { it.online }),
     Active("active", "Active", { it.status == CustomerStatus.Active }),
     Suspended("suspended", "Suspended", { it.status == CustomerStatus.Suspended }),
     Owing("owing", "Owing", { it.owing });
