@@ -21,6 +21,8 @@ data class CheckerState(
     val smsLow: Boolean = false,
     val payheroLow: Boolean = false,
     val lowStock: Set<Int> = emptySet(),
+    /** Jobs assigned to this user that have already been announced. */
+    val myJobs: Set<Int> = emptySet(),
 )
 
 @Serializable

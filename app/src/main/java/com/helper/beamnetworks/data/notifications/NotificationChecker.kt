@@ -8,7 +8,9 @@ import com.helper.beamnetworks.data.api.OfflinePeriodDto
 import com.helper.beamnetworks.data.api.SessionStore
 import com.helper.beamnetworks.data.api.apiCall
 import com.helper.beamnetworks.data.api.fetchAllPages
+import com.helper.beamnetworks.data.JobType
 import com.helper.beamnetworks.util.parseDateTime
+import com.helper.beamnetworks.util.whenLabel
 import com.helper.beamnetworks.util.zone
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -71,6 +73,7 @@ class NotificationChecker(
         source("account", NotificationCategory.Billing) { s, out -> checkAccount(s, out, now) }
         source("balances", NotificationCategory.Billing) { s, out -> checkBalances(s, out, now) }
         source("stock", NotificationCategory.Stock) { s, out -> checkStock(s, out, now) }
+        source("jobs", NotificationCategory.Jobs) { s, out -> checkMyJobs(s, out, now) }
 
         saveState(state)
         feed.add(events)
@@ -345,6 +348,30 @@ class NotificationChecker(
             )
         }
         return s.copy(smsLow = smsLow, payheroLow = payheroLow)
+    }
+
+    /** Tells a technician when a job lands on them, with what the customer already has. */
+    private suspend fun checkMyJobs(s: CheckerState, out: MutableList<AppNotification>, now: Long): CheckerState {
+        val open = apiCall { api.jobs(1, mine = true) }.results.filter { it.status in setOf("open", "scheduled") }
+        open.filter { it.id !in s.myJobs }.forEach { job ->
+            val lines = job.description.orEmpty().lines()
+            fun answer(prefix: String) = lines.firstOrNull { it.startsWith(prefix) }?.removePrefix(prefix)?.trim()
+            val equipment = if (job.jobType == "installation" && answer("Router: ") != null) {
+                " Router: ${if (answer("Router: ") == "yes") "yes" else "no"}, PoE: ${if (answer("PoE: ") == "yes") "yes" else "no"}."
+            } else ""
+            out += AppNotification(
+                id = "job-${job.id}",
+                category = NotificationCategory.Jobs,
+                title = "New ${JobType.from(job.jobType).label.lowercase()} assigned to you",
+                body = listOfNotNull(
+                    job.customerName?.ifBlank { null } ?: job.title.ifBlank { null },
+                    parseDateTime(job.scheduledFor)?.let { whenLabel(it) },
+                ).joinToString(" · ") + "." + equipment,
+                time = now,
+                link = Links.job(job.id),
+            )
+        }
+        return s.copy(myJobs = open.map { it.id }.toSet())
     }
 
     private suspend fun checkStock(s: CheckerState, out: MutableList<AppNotification>, now: Long): CheckerState {

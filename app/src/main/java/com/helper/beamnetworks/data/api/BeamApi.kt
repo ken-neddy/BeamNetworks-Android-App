@@ -81,7 +81,7 @@ interface BeamApi {
 
     // Field jobs
     @GET("field-jobs/")
-    suspend fun jobs(@Query("page") page: Int, @Query("job_type") jobType: String? = null, @Query("page_size") pageSize: Int = 200): Page<JobDto>
+    suspend fun jobs(@Query("page") page: Int, @Query("job_type") jobType: String? = null, @Query("page_size") pageSize: Int = 200, @Query("mine") mine: Boolean? = null): Page<JobDto>
 
     @POST("field-jobs/")
     suspend fun createJob(@Body body: JobCreate): JobDto

@@ -377,6 +377,7 @@ fun InstallDetailScreen(onEdit: (Int) -> Unit, onMarkDone: (Int) -> Unit) {
                     job.checkedInAt?.let { "Checked in" to whenLabel(it) },
                     job.sourceTicket?.let { "From ticket" to it },
                     if (job.type == JobType.Installation) "Has a router" to (if (job.hasRouter) "Yes" else "No") else null,
+                    if (job.type == JobType.Installation) "Has PoE" to (if (job.hasPoe) "Yes" else "No") else null,
                     job.notes.takeIf { it.isNotBlank() }?.let { "Notes" to it },
                 )
                 rows.forEachIndexed { i, (label, value) -> InfoRow(label, value, showDivider = i < rows.lastIndex) }

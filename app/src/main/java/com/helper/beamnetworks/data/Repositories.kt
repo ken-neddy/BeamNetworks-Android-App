@@ -264,6 +264,7 @@ data class JobDraft(
     val location: String,
     val notes: String,
     val hasRouter: Boolean,
+    val hasPoe: Boolean = false,
     val date: LocalDate,
     val time: LocalTime,
     val technicianId: Int?,
@@ -274,7 +275,7 @@ data class JobDraft(
 class JobRepository(private val api: BeamApi, scope: CoroutineScope) {
     val jobs = RemoteList(scope) { apiCall { fetchAllPages(maxPages = 10) { api.jobs(it) } }.map { it.toJob() } }
     val staff = RemoteList(scope) {
-        apiCall { fetchAllPages { api.staff(it) } }.filter { it.isActive && it.user != null }.map { StaffMember(it.user!!, it.name.ifBlank { it.email }) }
+        apiCall { fetchAllPages { api.staff(it) } }.filter { it.isActive && it.user != null }.map { StaffMember(it.user!!, it.name.ifBlank { it.email }, it.phone.orEmpty()) }
     }
 
     fun byId(id: Int): Job? = jobs.items.firstOrNull { it.id == id }
@@ -349,6 +350,7 @@ class JobRepository(private val api: BeamApi, scope: CoroutineScope) {
             location = location,
             notes = notes,
             hasRouter = field(ROUTER) == "yes",
+            hasPoe = field(POE) == "yes",
             scheduled = parseDateTime(scheduledFor),
             status = JobStatus.from(status),
             technicianId = assignedTo,
@@ -366,14 +368,16 @@ class JobRepository(private val api: BeamApi, scope: CoroutineScope) {
         add(draft.location.trim())
         if (draft.phone.isNotBlank()) add(PHONE + draft.phone.trim())
         add(ROUTER + if (draft.hasRouter) "yes" else "no")
+        add(POE + if (draft.hasPoe) "yes" else "no")
         if (draft.notes.isNotBlank()) add(NOTES + draft.notes.trim().replace('\n', ' '))
     }.joinToString("\n")
 
     private companion object {
         const val PHONE = "Phone: "
         const val ROUTER = "Router: "
+        const val POE = "PoE: "
         const val NOTES = "Notes: "
-        val PREFIXES = listOf(PHONE, ROUTER, NOTES)
+        val PREFIXES = listOf(PHONE, ROUTER, POE, NOTES)
     }
 }
 

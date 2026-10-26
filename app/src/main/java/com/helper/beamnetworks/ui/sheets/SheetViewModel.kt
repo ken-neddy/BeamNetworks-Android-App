@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.helper.beamnetworks.data.AppContainer
 import com.helper.beamnetworks.data.Customer
+import com.helper.beamnetworks.data.Job
 import com.helper.beamnetworks.data.JobDraft
 import com.helper.beamnetworks.data.JobType
 import com.helper.beamnetworks.data.api.ApiException
@@ -94,6 +95,7 @@ data class Draft(
     val location: String = "",
     val notes: String = "",
     val hasRouter: Boolean = false,
+    val hasPoe: Boolean = false,
     val date: LocalDate = LocalDate.now(zone).plusDays(1),
     val time: LocalTime = LocalTime.of(10, 0),
     val technicianId: Int? = null,
@@ -285,6 +287,7 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
                     location = job.location,
                     notes = job.notes,
                     hasRouter = job.hasRouter,
+                    hasPoe = job.hasPoe,
                     date = local?.toLocalDate() ?: LocalDate.now(zone),
                     time = local?.toLocalTime()?.withSecond(0)?.withNano(0) ?: LocalTime.of(10, 0),
                     technicianId = job.technicianId,
@@ -362,15 +365,16 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
                 val name = d.name.trim().ifBlank { d.customerText.trim() }
                 if (name.isBlank()) return fail("Add the customer name")
                 val customer = d.customerId?.let { app.customers.byId(it) }?.takeIf { it.name == name }
-                val jobDraft = JobDraft(name, customer?.identityId, d.phone, d.location, d.notes, d.hasRouter, d.date, d.time, d.technicianId, d.jobType, d.priority)
+                val jobDraft = JobDraft(
+                    customerName = name, identityId = customer?.identityId, phone = d.phone, location = d.location, notes = d.notes,
+                    hasRouter = d.hasRouter, hasPoe = d.hasPoe, date = d.date, time = d.time, technicianId = d.technicianId,
+                    type = d.jobType, priority = d.priority,
+                )
                 run {
-                    if (type.editId == null) {
-                        app.jobs.schedule(jobDraft)
-                        done("${d.jobType.label} scheduled", SheetDestination.Installs)
-                    } else {
-                        app.jobs.update(type.editId, jobDraft)
-                        done("Job updated")
-                    }
+                    val previousTechnician = type.editId?.let { app.jobs.byId(it)?.technicianId }
+                    val job = if (type.editId == null) app.jobs.schedule(jobDraft) else app.jobs.update(type.editId, jobDraft)
+                    val texted = textTechnician(job, previousTechnician)
+                    if (type.editId == null) done("${d.jobType.label} scheduled$texted", SheetDestination.Installs) else done("Job updated$texted")
                 }
             }
             is SheetType.Ticket -> {
@@ -439,6 +443,23 @@ class SheetViewModel(private val app: AppContainer) : ViewModel() {
         run {
             app.inventory.archive(item)
             done("${item.name} archived")
+        }
+    }
+
+    /**
+     * Texts a newly assigned technician the job's details; the technician's own app also raises a
+     * notification when it sees the job. Returns a suffix for the confirmation toast.
+     */
+    private fun textTechnician(job: Job, previousTechnician: Int?): String {
+        val technicianId = job.technicianId ?: return ""
+        if (technicianId == previousTechnician || technicianId == app.sessions.current?.userId) return ""
+        val technician = app.jobs.staff.items.firstOrNull { it.userId == technicianId }
+        val phone = technician?.phone.orEmpty()
+        return when {
+            phone.isBlank() -> ". ${technician?.name ?: "The technician"} has no phone number, so no SMS was sent"
+            !app.technicianAlerts.canText() -> ". Allow SMS in Settings › Phone permissions to text technicians"
+            app.technicianAlerts.text(phone, app.technicianAlerts.message(job)) -> ". ${technician?.name ?: "Technician"} was texted"
+            else -> ". The SMS to ${technician?.name ?: "the technician"} could not be sent"
         }
     }
 

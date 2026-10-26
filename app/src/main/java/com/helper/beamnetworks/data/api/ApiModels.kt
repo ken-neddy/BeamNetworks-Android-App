@@ -280,6 +280,7 @@ data class StaffDto(
     val user: Int? = null,
     val name: String = "",
     val email: String = "",
+    val phone: String? = null,
     @SerialName("is_active") val isActive: Boolean = true,
 )
 

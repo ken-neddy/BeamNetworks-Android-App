@@ -2,6 +2,7 @@ package com.helper.beamnetworks.ui.sheets
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +32,7 @@ import com.helper.beamnetworks.ui.components.PillTabs
 import com.helper.beamnetworks.ui.components.QtyStepper
 import com.helper.beamnetworks.ui.components.SecondaryButton
 import com.helper.beamnetworks.ui.components.SuggestField
+import com.helper.beamnetworks.ui.components.CheckRow
 import com.helper.beamnetworks.ui.components.SwitchRow
 import com.helper.beamnetworks.ui.components.TimeField
 import com.helper.beamnetworks.ui.components.TwoColumns
@@ -381,7 +383,11 @@ private fun JobFields(vm: SheetViewModel) {
         { name -> vm.edit { copy(technicianId = staff.items.firstOrNull { it.name == name }?.userId) } },
     )
     if (d.jobType == JobType.Installation) {
-        SwitchRow("Customer already has a router", d.hasRouter) { v -> vm.edit { copy(hasRouter = v) } }
+        // Both equipment questions sit together so the technician knows what to bring
+        Column(Modifier.fillMaxWidth().background(BeamColors.InputFill, BeamShapes.Input).padding(horizontal = 6.dp, vertical = 4.dp)) {
+            CheckRow("Customer has a router", d.hasRouter) { v -> vm.edit { copy(hasRouter = v) } }
+            CheckRow("Customer has PoE", d.hasPoe) { v -> vm.edit { copy(hasPoe = v) } }
+        }
     }
     FormField("Notes (optional)", d.notes, { v -> vm.edit { copy(notes = v) } })
 }

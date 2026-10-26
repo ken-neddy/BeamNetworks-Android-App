@@ -126,6 +126,16 @@ private val steps: List<SetupStep> = listOfNotNull(
         granted = { has(it, Manifest.permission.READ_SMS) },
     ),
     SetupStep(
+        key = "sendsms",
+        icon = BeamIcons.Send, tone = Tones.Teal,
+        title = "Text technicians",
+        why = "So the app can SMS a technician the moment you assign them a job. The text is sent from this phone's SIM, so your normal SMS rates apply.",
+        uses = listOf("Sends the customer, place, time and whether they have a router and PoE", "Only sent when a technician is newly assigned to a job"),
+        allowLabel = "Allow sending SMS",
+        permissions = listOf(Manifest.permission.SEND_SMS),
+        granted = { has(it, Manifest.permission.SEND_SMS) },
+    ),
+    SetupStep(
         key = "location",
         icon = BeamIcons.MapPin, tone = Tones.Purple,
         title = "Location",

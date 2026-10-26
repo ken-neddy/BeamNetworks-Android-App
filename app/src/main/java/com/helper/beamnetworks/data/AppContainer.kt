@@ -59,6 +59,7 @@ class AppContainer(private val context: Context) {
     val expenses = ExpenseRepository(scope)
     val issues = IssueRepository(scope)
     val callerDirectory = CallerDirectory(context)
+    val technicianAlerts = TechnicianAlerts(context)
     val notificationSettings = NotificationSettings(context)
     val notificationFeed = NotificationFeed(context)
     val notifier = Notifier(context)

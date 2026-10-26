@@ -29,6 +29,7 @@ enum class NotificationCategory(
     Tickets("beam_tickets", "Tickets", "New tickets from customers or staff, and SLA breaches", NotificationManager.IMPORTANCE_DEFAULT),
     Billing("beam_billing", "Beam account and balances", "Your Beam subscription, and low SMS or PayHero balances", NotificationManager.IMPORTANCE_HIGH),
     Stock("beam_stock", "Low stock", "A product drops to its reorder level", NotificationManager.IMPORTANCE_LOW),
+    Jobs("beam_jobs", "Jobs assigned to you", "An installation or visit is assigned to you", NotificationManager.IMPORTANCE_HIGH),
 }
 
 /** One event in the in-app feed (and, usually, a system notification). */
@@ -53,6 +54,7 @@ object Links {
     const val STOCK = "beamnetworks://app/stock"
     fun customer(id: Int) = "beamnetworks://app/customer/$id"
     fun ticket(id: Int) = "beamnetworks://app/ticket/$id"
+    fun job(id: Int) = "beamnetworks://app/installation_details/$id"
 }
 
 /** Which categories are on, and the client-downtime threshold. */

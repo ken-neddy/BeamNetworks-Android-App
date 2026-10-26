@@ -113,6 +113,7 @@ data class Job(
     val location: String,
     val notes: String,
     val hasRouter: Boolean,
+    val hasPoe: Boolean = false,
     val scheduled: ZonedDateTime?,
     val status: JobStatus,
     val technicianId: Int?,
@@ -140,7 +141,7 @@ data class Expense(
     val shop: String = "",
 )
 
-data class StaffMember(val userId: Int, val name: String)
+data class StaffMember(val userId: Int, val name: String, val phone: String = "")
 
 data class Plan(val id: Int, val name: String, val networkScope: Int?)
 
